@@ -91,7 +91,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
     AnalyticsService.logStoryScrolledToBottom();
     
     // Show interstitial ad after 5 second delay (gives user time to read ending)
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 8), () {
       if (mounted) {
         _showInterstitialOnce();
       }
