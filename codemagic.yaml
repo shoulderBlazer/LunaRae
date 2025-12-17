@@ -21,7 +21,7 @@ workflows:
           cd ..
 
       - name: Build iOS IPA
-        script: flutter build ipa --release
+        script: flutter build ipa --release --export-method app-store
 
     artifacts:
       - build/ios/ipa/*.ipa
