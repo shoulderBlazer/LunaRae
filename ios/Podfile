@@ -1,6 +1,11 @@
+# Use CDN for faster, more reliable pod fetching
+source 'https://cdn.cocoapods.org/'
+
 platform :ios, '15.0'
 
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+ENV['GIT_HTTP_LOW_SPEED_LIMIT'] = '0'
+ENV['GIT_HTTP_LOW_SPEED_TIME'] = '999999'
 
 project 'Runner', {
   'Debug' => :debug,
