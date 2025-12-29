@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'analytics_service.dart';
@@ -13,16 +13,8 @@ class StoryService {
   }
 
   http.Client _createOptimizedClient() {
-    if (Platform.isIOS) {
-      // iOS-specific optimizations
-      return http.ClientWithTimeout(
-        Duration(seconds: 30),
-        onBadCertificate: (X509Certificate cert, String host) => host == 'api.openai.com',
-      );
-    } else {
-      // Default client for other platforms
-      return http.Client();
-    }
+    // Create a custom client with timeout configuration
+    return http.Client();
   }
 
   Future<String> generateStory(String input) async {
@@ -64,6 +56,9 @@ class StoryService {
           "User-Agent": "LunaRae-iOS/1.0",
         },
         body: requestBody,
+      ).timeout(
+        Duration(seconds: 30),
+        onTimeout: () => throw TimeoutException("Request timeout", Duration(seconds: 30)),
       );
 
       if (response.statusCode == 200) {
