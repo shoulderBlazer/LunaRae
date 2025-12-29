@@ -32,14 +32,11 @@ class StoryService {
         "messages": [
           {
             "role": "system",
-            "content":
-                "You are LunaRae, a gentle storyteller who writes calm, happy bedtime stories for children ages 2 to 10. "
-                "Stories must avoid fear, danger, sadness, violence, and villains. "
-                "Every story should be relaxing, positive, kind, imaginative, and end with peaceful sleep."
+            "content": "You are LunaRae, a gentle storyteller for children ages 2-10. Write calm, happy bedtime stories avoiding fear, danger, sadness, and violence. Stories should be positive, kind, imaginative, and end peacefully."
           },
           {
             "role": "user",
-            "content": "Create a short bedtime story about: $input"
+            "content": "Short bedtime story about: $input"
           }
         ],
         "max_tokens": 700,
