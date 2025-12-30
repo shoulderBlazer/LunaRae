@@ -1,3 +1,6 @@
 IPHONEOS_DEPLOYMENT_TARGET=15.0
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
+
+// Pass OpenAI API key from environment
+OPENAI_API_KEY = $(OPENAI_API_KEY)
