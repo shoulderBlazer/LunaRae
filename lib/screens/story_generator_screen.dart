@@ -1,6 +1,7 @@
 // lib/screens/story_generator_screen.dart
 // Screen 1 — CREATE STORY (PROMPT SCREEN)
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../theme/theme.dart';
 import 'story_view_screen.dart';
@@ -87,9 +88,14 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final message = e.toString().contains('OPENAI_API_KEY')
+          ? (kReleaseMode
+              ? 'App build is missing the OpenAI API key. Please contact support.'
+              : 'Missing OPENAI_API_KEY. Run/build with --dart-define=OPENAI_API_KEY=...')
+          : 'Unable to create story. Please try again.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Unable to create story. Please try again."),
+          content: Text(message),
           backgroundColor: LunaTheme.primary(context),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(

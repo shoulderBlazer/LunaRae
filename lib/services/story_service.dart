@@ -20,7 +20,10 @@ class StoryService {
 
   Future<String> generateStory(String input) async {
     if (apiKey.isEmpty) {
-      throw Exception('OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file.');
+      await AnalyticsService.logStoryGenerateFailed('Missing OPENAI_API_KEY (build misconfigured)');
+      throw Exception(
+        'OPENAI_API_KEY is not configured for this build. Provide it at build time using --dart-define=OPENAI_API_KEY=... (e.g. in Codemagic).',
+      );
     }
 
     final url = Uri.parse("https://api.openai.com/v1/chat/completions");
