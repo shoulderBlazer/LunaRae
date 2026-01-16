@@ -1,32 +1,16 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'firebase_options.dart';
+import 'package:provider/provider.dart';
 import 'theme/theme.dart';
 import 'screens/story_generator_screen.dart';
 import 'services/ad_service.dart';
 import 'services/analytics_service.dart';
+import 'services/font_size_provider.dart';
 
 void main() async {
-  runZonedGuarded<Future<void>>(() async {
-    // Initialize Flutter bindings first
-    WidgetsFlutterBinding.ensureInitialized();
-    
-    // Initialize Firebase
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    
-    // Initialize Crashlytics
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-    
-    await AdService.initialize();
-    await AnalyticsService.logAppOpened();
-    runApp(const LunaRaeApp());
-  }, (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-  });
+  WidgetsFlutterBinding.ensureInitialized();
+  await AdService.initialize();
+  await AnalyticsService.logAppOpened();
+  runApp(const LunaRaeApp());
 }
 
 class LunaRaeApp extends StatelessWidget {
@@ -34,14 +18,16 @@ class LunaRaeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'LunaRae',
-      theme: LunaTheme.lightTheme(),
-      darkTheme: LunaTheme.darkTheme(),
-      themeMode: ThemeMode.system, // Automatically adapts to system light/dark mode
-      home: const StoryGeneratorScreen(),
-      debugShowCheckedModeBanner: false,
-      navigatorObservers: [AnalyticsService.observer],
+    return ChangeNotifierProvider(
+      create: (_) => FontSizeProvider(),
+      child: MaterialApp(
+        title: 'LunaRae',
+        theme: LunaTheme.lightTheme(),
+        darkTheme: LunaTheme.darkTheme(),
+        themeMode: ThemeMode.system, // Automatically adapts to system light/dark mode
+        home: const StoryGeneratorScreen(),
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 } 

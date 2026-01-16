@@ -181,7 +181,7 @@ class LunaTheme {
     return ThemeData(
       brightness: Brightness.light,
       primaryColor: lightPrimary,
-      scaffoldBackgroundColor: Colors.transparent,
+      scaffoldBackgroundColor: lightGradientEnd,
       textTheme: GoogleFonts.nunitoTextTheme(),
       colorScheme: const ColorScheme.light(
         primary: lightPrimary,
@@ -209,7 +209,7 @@ class LunaTheme {
     return ThemeData(
       brightness: Brightness.dark,
       primaryColor: darkPrimary,
-      scaffoldBackgroundColor: Colors.transparent,
+      scaffoldBackgroundColor: darkGradientEnd,
       textTheme: GoogleFonts.nunitoTextTheme(
         ThemeData.dark().textTheme,
       ),

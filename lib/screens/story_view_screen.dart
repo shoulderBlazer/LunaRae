@@ -2,7 +2,9 @@
 // Screen 2 — YOUR STORY (OUTPUT SCREEN)
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/theme.dart';
+import '../services/font_size_provider.dart';
 import '../widgets/banner_ad_widget.dart' show StoryOutputBannerAd;
 import '../widgets/dreamy_widgets.dart';
 import '../widgets/frosted_header.dart';
@@ -36,6 +38,9 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   
   // Track if user has scrolled to bottom of story (triggers once per session)
   bool _hasReachedStoryBottom = false;
+  
+  final GlobalKey _headerKey = GlobalKey();
+  double _headerHeight = 0;
 
   @override
   void initState() {
@@ -56,7 +61,18 @@ class _StoryViewScreenState extends State<StoryViewScreen>
     // Pre-load interstitial ad after screen renders (never block story display)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AdService.loadInterstitialAd();
+      _measureHeader();
     });
+  }
+
+  void _measureHeader() {
+    final renderBox = _headerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null && mounted) {
+      final height = renderBox.size.height;
+      if (height != _headerHeight) {
+        setState(() => _headerHeight = height);
+      }
+    }
   }
 
   @override
@@ -122,6 +138,12 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   @override
   Widget build(BuildContext context) {
     final hasContent = widget.content.isNotEmpty;
+    final footerHeight = StoryOutputBannerAd.calculateFooterHeight(context);
+    // Fixed gap between header and card
+    const dynamicGap = 24.0;
+    
+    // Schedule header measurement after layout
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureHeader());
     
     return Scaffold(
       extendBody: true,
@@ -133,96 +155,112 @@ class _StoryViewScreenState extends State<StoryViewScreen>
             // Main content
             SafeArea(
               top: false,
-              child: SingleChildScrollView(
-                physics: const NeverScrollableScrollPhysics(),
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    left: 24,
-                    right: 24,
-                    top: MediaQuery.of(context).padding.top + 55,
-                    bottom: 120,
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 24),
-                      // Large centered Story Card
-                      FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: DreamyCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Story title header
-                              Center(
-                                child: Text(
-                                  'Your LunaRae generated story is about:',
-                                  style: LunaTheme.appTitle(context).copyWith(
-                                    fontSize: 18,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              // Story summary title
-                              if (widget.storyTitle != null && widget.storyTitle!.isNotEmpty) ...[
-                                const SizedBox(height: 12),
-                                Text(
-                                  widget.storyTitle!,
-                                  style: LunaTheme.body(context).copyWith(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: LunaTheme.primary(context),
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                              const SizedBox(height: 24),
-                              // Divider with soft styling
-                              Container(
-                                height: 1,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.transparent,
-                                      LunaTheme.primary(context).withOpacity(0.3),
-                                      Colors.transparent,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              // Story content or empty state
-                              hasContent
-                                  ? _StoryContent(
-                                      content: widget.content,
-                                      onScrolledToBottom: _onStoryScrolledToBottom,
-                                    )
-                                  : _EmptyState(),
-                              const SizedBox(height: 32),
-                              // Back button - shows interstitial ad then navigates
-                              DreamyPrimaryButton(
-                                text: "Create Another Story",
-                                onPressed: _onCreateAnotherStory,
-                              ),
-                              const SizedBox(height: 16),
-                              // OpenAI attribution
-                              Center(
-                                child: Text(
-                                  'Uses OpenAI technology',
-                                  style: LunaTheme.body(context).copyWith(
-                                    fontSize: 10,
-                                    color: LunaTheme.primary(context).withOpacity(0.5),
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+              bottom: false,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Available height for card = total - header - footer - margins
+                  final availableHeight = constraints.maxHeight - _headerHeight - footerHeight;
+                  // Card area: top margin (dynamicGap) + card + bottom margin (dynamicGap)
+                  final cardMaxHeight = availableHeight - dynamicGap - dynamicGap;
+                  
+                  return SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: 24,
+                        right: 24,
+                        top: _headerHeight + dynamicGap,
                       ),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
+                      child: Column(
+                        children: [
+                          // Large centered Story Card - constrained to end above footer
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: cardMaxHeight,
+                            ),
+                            child: FadeTransition(
+                              opacity: _fadeAnimation,
+                              child: DreamyCard(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Story title header
+                                    Center(
+                                      child: Text(
+                                        'Your LunaRae generated story is about:',
+                                        style: LunaTheme.appTitle(context).copyWith(
+                                          fontSize: 18,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    // Story summary title
+                                    if (widget.storyTitle != null && widget.storyTitle!.isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        widget.storyTitle!,
+                                        style: LunaTheme.body(context).copyWith(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: LunaTheme.primary(context),
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                    const SizedBox(height: 24),
+                                    // Divider with soft styling
+                                    Container(
+                                      height: 1,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.transparent,
+                                            LunaTheme.primary(context).withOpacity(0.3),
+                                            Colors.transparent,
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    // Story content or empty state - flexible to fill available space
+                                    Flexible(
+                                      child: hasContent
+                                          ? _StoryContent(
+                                              content: widget.content,
+                                              onScrolledToBottom: _onStoryScrolledToBottom,
+                                            )
+                                          : _EmptyState(),
+                                    ),
+                                    const SizedBox(height: 32),
+                                    // Back button - shows interstitial ad then navigates
+                                    DreamyPrimaryButton(
+                                      text: "Create Another Story",
+                                      onPressed: _onCreateAnotherStory,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    // OpenAI attribution
+                                    Center(
+                                      child: Text(
+                                        'Uses OpenAI technology',
+                                        style: LunaTheme.body(context).copyWith(
+                                          fontSize: 10,
+                                          color: LunaTheme.primary(context).withOpacity(0.5),
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
             // Frosted header overlay
@@ -231,7 +269,9 @@ class _StoryViewScreenState extends State<StoryViewScreen>
               left: 0,
               right: 0,
               child: FrostedHeader(
+                key: _headerKey,
                 title: 'LunaRae',
+                trailing: _FontSizeButton(),
               ),
             ),
           ],
@@ -286,22 +326,24 @@ class _StoryContentState extends State<_StoryContent> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 300),
-      child: Scrollbar(
+    final fontSizeProvider = context.watch<FontSizeProvider>();
+    final scaledStyle = LunaTheme.storyBody(context).copyWith(
+      fontSize: 18 * fontSizeProvider.scaleFactor,
+    );
+    
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      thickness: 4,
+      radius: const Radius.circular(4),
+      child: SingleChildScrollView(
         controller: _scrollController,
-        thumbVisibility: true,
-        thickness: 4,
-        radius: const Radius.circular(4),
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Text(
-              widget.content,
-              style: LunaTheme.storyBody(context),
-            ),
+        physics: const BouncingScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: Text(
+            widget.content,
+            style: scaledStyle,
           ),
         ),
       ),
@@ -347,8 +389,8 @@ class _FooterLinks extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Soft gray/lavender for near-invisibility
-    final linkColor = LunaTheme.primary(context);
+    // Light color for dark footer background
+    final linkColor = Colors.white.withOpacity(0.7);
     const textStyle = TextStyle(
       fontSize: 10,
       fontWeight: FontWeight.w400,
@@ -374,7 +416,7 @@ class _FooterLinks extends StatelessWidget {
           ),
         ),
         _FooterLink(
-          text: 'Terms & Conditions',
+          text: 'T&Cs',
           color: linkColor,
           style: textStyle,
           onTap: () => Navigator.push(
@@ -421,6 +463,37 @@ class _FooterLinkState extends State<_FooterLink> {
           color: widget.color,
           decoration: _isTapped ? TextDecoration.underline : TextDecoration.none,
           decorationColor: widget.color,
+        ),
+      ),
+    );
+  }
+}
+
+/// Font size button for the header
+class _FontSizeButton extends StatelessWidget {
+  const _FontSizeButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final fontSizeProvider = context.watch<FontSizeProvider>();
+    
+    return GestureDetector(
+      onTap: () => showFontSizeSelector(context, fontSizeProvider),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: LunaTheme.primary(context).withOpacity(0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: LunaTheme.primary(context).withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Icon(
+          Icons.text_fields,
+          color: LunaTheme.primary(context),
+          size: 22,
         ),
       ),
     );

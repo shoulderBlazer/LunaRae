@@ -60,7 +60,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
         child: Container(
-          color: (isDark ? Colors.black : Colors.white).withOpacity(0.3),
+          color: (isDark ? LunaTheme.darkGradientStart : LunaTheme.lightPrimary).withOpacity(0.9),
           child: SafeArea(
             top: false,
             child: SizedBox(
@@ -82,6 +82,11 @@ class BannerAdWithFooter extends StatefulWidget {
   final Widget footerLinks;
   
   const BannerAdWithFooter({super.key, required this.footerLinks});
+  
+  /// Calculate the total footer height including text scale for dynamic layouts
+  static double calculateFooterHeight(BuildContext context) {
+    return _BannerAdWithFooterState.calculateFooterHeight(context);
+  }
 
   @override
   State<BannerAdWithFooter> createState() => _BannerAdWithFooterState();
@@ -93,6 +98,24 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
   
   // Fixed height to prevent layout shift - standard banner is 50px
   static const double _reservedAdHeight = 50.0;
+  
+  /// Calculate the total footer height including text scale for dynamic layouts
+  static double calculateFooterHeight(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final textScaler = mediaQuery.textScaler;
+    
+    // Footer link text base height (fontSize 10 + padding)
+    final footerLinksHeight = textScaler.scale(10) + 12; // 6px vertical padding * 2
+    
+    // Fixed components
+    const bannerHeight = _reservedAdHeight;
+    const bottomPadding = 8.0; // minimum SafeArea bottom
+    
+    // SafeArea bottom inset
+    final safeAreaBottom = mediaQuery.padding.bottom;
+    
+    return footerLinksHeight + bannerHeight + bottomPadding + safeAreaBottom;
+  }
 
   @override
   void initState() {
@@ -135,9 +158,10 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
         child: Container(
-          color: (isDark ? Colors.black : Colors.white).withOpacity(0.3),
+          color: (isDark ? LunaTheme.darkGradientStart : LunaTheme.lightPrimary).withOpacity(0.9),
           child: SafeArea(
             top: false,
+            minimum: const EdgeInsets.only(bottom: 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -256,6 +280,11 @@ class StoryOutputBannerAd extends StatefulWidget {
   final Widget footerLinks;
   
   const StoryOutputBannerAd({super.key, required this.footerLinks});
+  
+  /// Calculate the total footer height including text scale for dynamic layouts
+  static double calculateFooterHeight(BuildContext context) {
+    return _StoryOutputBannerAdState.calculateFooterHeight(context);
+  }
 
   @override
   State<StoryOutputBannerAd> createState() => _StoryOutputBannerAdState();
@@ -271,6 +300,25 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
   
   // Fixed height to prevent layout shift - standard banner is 50px
   static const double _reservedAdHeight = 50.0;
+  
+  /// Calculate the total footer height including text scale for dynamic layouts
+  static double calculateFooterHeight(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final textScaler = mediaQuery.textScaler;
+    
+    // Footer link text base height (fontSize 10 + padding)
+    final footerLinksHeight = textScaler.scale(10) + 12; // 6px vertical padding * 2
+    
+    // Fixed components
+    const separatorHeight = 5.0; // 1px line + 4px spacing
+    const bannerHeight = _reservedAdHeight;
+    const bottomPadding = 8.0; // minimum SafeArea bottom
+    
+    // SafeArea bottom inset
+    final safeAreaBottom = mediaQuery.padding.bottom;
+    
+    return separatorHeight + footerLinksHeight + bannerHeight + bottomPadding + safeAreaBottom;
+  }
 
   @override
   void initState() {
@@ -326,9 +374,10 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
         child: Container(
-          color: (isDark ? Colors.black : Colors.white).withOpacity(0.3),
+          color: (isDark ? LunaTheme.darkGradientStart : LunaTheme.lightPrimary).withOpacity(0.9),
           child: SafeArea(
             top: false,
+            minimum: const EdgeInsets.only(bottom: 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

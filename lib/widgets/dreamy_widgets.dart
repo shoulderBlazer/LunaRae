@@ -47,6 +47,7 @@ class DreamyPrimaryButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final IconData? icon;
+  final bool compact;
   
   const DreamyPrimaryButton({
     super.key,
@@ -54,6 +55,7 @@ class DreamyPrimaryButton extends StatefulWidget {
     this.onPressed,
     this.isLoading = false,
     this.icon,
+    this.compact = false,
   });
 
   @override
@@ -102,7 +104,10 @@ class _DreamyPrimaryButtonState extends State<DreamyPrimaryButton>
         scale: _scaleAnimation,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+          padding: EdgeInsets.symmetric(
+            vertical: widget.compact ? 12 : 18, 
+            horizontal: widget.compact ? 16 : 24,
+          ),
           decoration: BoxDecoration(
             gradient: LunaTheme.buttonGradient(context),
             borderRadius: BorderRadius.circular(LunaTheme.radiusButton),
@@ -117,22 +122,25 @@ class _DreamyPrimaryButtonState extends State<DreamyPrimaryButton>
           child: Center(
             child: widget.isLoading
                 ? _MoonLoadingIndicator(isDark: isDark)
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.icon != null) ...[
-                        Icon(
-                          widget.icon,
-                          color: isDark ? LunaTheme.darkCard : LunaTheme.lightCard,
-                          size: 20,
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.icon != null) ...[
+                          Icon(
+                            widget.icon,
+                            color: isDark ? LunaTheme.darkCard : LunaTheme.lightCard,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        Text(
+                          widget.text,
+                          style: LunaTheme.buttonText(context),
                         ),
-                        const SizedBox(width: 10),
                       ],
-                      Text(
-                        widget.text,
-                        style: LunaTheme.buttonText(context),
-                      ),
-                    ],
+                    ),
                   ),
           ),
         ),
