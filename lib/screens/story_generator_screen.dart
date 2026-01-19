@@ -3,6 +3,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme.dart';
 import '../services/font_size_provider.dart';
@@ -36,6 +37,13 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
     AnalyticsService.logScreenPromptOpened();
     _storyService = StoryService(ApiKeys.openAiKey);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureHeader());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Force rebuild when orientation changes
+    setState(() {});
   }
 
   void _measureHeader() {
@@ -136,6 +144,7 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
       fontSize: 16 * fontSizeProvider.scaleFactor,
     );
     final footerHeight = BannerAdWithFooter.calculateFooterHeight(context);
+    
     // Fixed gap between header and card
     const dynamicGap = 24.0;
     
@@ -146,95 +155,189 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
       extendBody: true,
       extendBodyBehindAppBar: true,
       bottomNavigationBar: BannerAdWithFooter(footerLinks: const _FooterLinks()),
-      body: GestureDetector(
-        onTap: () {
-          FocusScope.of(context).unfocus();
-        },
-        child: DreamyBackground(
-          child: Stack(
-            children: [
-              // Main content
-              SafeArea(
-                top: false,
-                bottom: false,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Available height = total - header - footer - margins
-                    final availableHeight = constraints.maxHeight - _headerHeight - footerHeight;
-                    // Card area: top margin (dynamicGap) + card + bottom margin (dynamicGap)
-                    final cardMaxHeight = availableHeight - dynamicGap - dynamicGap;
-                    // Use compact mode when space is tight (based on text scale factor)
-                    final textScale = MediaQuery.of(context).textScaler.scale(1.0);
-                    final useCompact = textScale > 1.2 || cardMaxHeight < 550;
-                    final useExtraCompact = textScale > 1.5 || cardMaxHeight < 450;
+      body: OrientationBuilder(
+        builder: (context, orientation) {
+          return GestureDetector(
+            onTap: () {
+              FocusScope.of(context).unfocus();
+            },
+            child: DreamyBackground(
+              child: Stack(
+                children: [
+                  // Main content
+                  SafeArea(
+                    top: false,
+                    bottom: false,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isLandscape = orientation == Orientation.landscape;
+                        
+                        // Available height = total - header - footer - margins
+                        final availableHeight = constraints.maxHeight - _headerHeight - footerHeight;
+                        // Card area: top margin (dynamicGap) + card + bottom margin (dynamicGap)
+                        final cardMaxHeight = availableHeight - dynamicGap - dynamicGap;
+                        // Use compact mode when space is tight (based on text scale factor)
+                        final textScale = MediaQuery.of(context).textScaler.scale(1.0);
+                        final useCompact = textScale > 1.2 || cardMaxHeight < 550;
+                        final useExtraCompact = textScale > 1.5 || cardMaxHeight < 450;
+                        
+                        // Orientation-aware padding and constraints
+                        final horizontalPadding = 24.0;
+                        final cardMaxWidth = double.infinity;
                     
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        left: 24,
-                        right: 24,
-                        top: _headerHeight + dynamicGap,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: cardMaxHeight,
+                    if (isLandscape) {
+                      // Landscape single card layout
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          left: horizontalPadding,
+                          right: horizontalPadding,
+                          top: _headerHeight + dynamicGap,
+                          bottom: dynamicGap,
                         ),
-                        child: DreamyCard(
-                          child: Column(
-                            children: [
-                              // Logo - flexible, shrinks freely
-                              Flexible(
-                                flex: 3,
-                                child: Image.asset(
-                                  'assets/images/lunarae_logo_1024x1024.png',
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                              
-                              SizedBox(height: useExtraCompact ? 4 : 8),
-                              
-                              // Prompt helper title - hidden in extra compact
-                              if (!useExtraCompact)
-                                Text(
-                                  'Create me magical story about:',
-                                  style: scaledBodyStyle.copyWith(
-                                    fontSize: 15 * fontSizeProvider.scaleFactor,
-                                    fontStyle: FontStyle.italic,
+                        child: IntrinsicHeight(
+                            child: DreamyCard(
+                              child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // Left side - Logo
+                                Expanded(
+                                  flex: 1,
+                                  child: Center(
+                                    child: Image.asset(
+                                      'assets/images/lunarae_logo_1024x1024.png',
+                                      fit: BoxFit.contain,
+                                      height: constraints.maxHeight * 0.4,
+                                    ),
                                   ),
-                                  textAlign: TextAlign.center,
                                 ),
-                              
-                              if (!useExtraCompact)
-                                const SizedBox(height: 8),
-                              
-                              // Prompt Input - pill-shaped, fewer lines when compact
-                              _ScaledDreamyInput(
-                                controller: promptController,
-                                hintText: "A sleepy unicorn who can't find her stars…",
-                                hintStyle: scaledHintStyle,
-                                inputStyle: scaledBodyStyle,
-                                onSubmitted: _isLoading ? null : _generateStory,
-                                maxLines: useExtraCompact ? 1 : (useCompact ? 2 : 3),
-                              ),
-                              
-                              SizedBox(height: useExtraCompact ? 4 : 8),
-                              
-                              // Primary Button
-                              _ScaledDreamyPrimaryButton(
-                                text: "Create My Bedtime Story",
-                                textStyle: LunaTheme.buttonText(context).copyWith(
-                                  fontSize: 17 * fontSizeProvider.scaleFactor,
+                                
+                                const SizedBox(width: 32),
+                                
+                                // Right side - Form content
+                                Expanded(
+                                  flex: 1,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      // Prompt helper title - hidden in extra compact
+                                      if (!useExtraCompact)
+                                        Text(
+                                          'Create me magical story about:',
+                                          style: scaledBodyStyle.copyWith(
+                                            fontSize: 15 * fontSizeProvider.scaleFactor,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      
+                                      if (!useExtraCompact)
+                                        const SizedBox(height: 16),
+                                      
+                                      // Prompt Input - pill-shaped, fewer lines when compact
+                                      _ScaledDreamyInput(
+                                        controller: promptController,
+                                        hintText: "A sleepy unicorn who can't find her stars…",
+                                        hintStyle: scaledHintStyle,
+                                        inputStyle: scaledBodyStyle,
+                                        onSubmitted: _isLoading ? null : _generateStory,
+                                        maxLines: useExtraCompact ? 1 : (useCompact ? 2 : 3),
+                                      ),
+                                      
+                                      SizedBox(height: useExtraCompact ? 8 : 16),
+                                      
+                                      // Primary Button
+                                      _ScaledDreamyPrimaryButton(
+                                        text: "Create My Bedtime Story",
+                                        textStyle: LunaTheme.buttonText(context).copyWith(
+                                          fontSize: 17 * fontSizeProvider.scaleFactor,
+                                        ),
+                                        onPressed: _isLoading ? null : _generateStory,
+                                        isLoading: _isLoading,
+                                        compact: useCompact || useExtraCompact,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                onPressed: _isLoading ? null : _generateStory,
-                                isLoading: _isLoading,
-                                compact: useCompact || useExtraCompact,
-                              ),
-                              
-                              SizedBox(height: useExtraCompact ? 2 : 4),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      // Portrait layout (original)
+                      return SingleChildScrollView(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            left: horizontalPadding,
+                            right: horizontalPadding,
+                            top: _headerHeight + dynamicGap,
+                            bottom: dynamicGap,
+                          ),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: cardMaxHeight < 400 ? 400 : cardMaxHeight,
+                            ),
+                            child: IntrinsicHeight(
+                              child: DreamyCard(
+                                child: Column(
+                                  children: [
+                                    // Logo - flexible, shrinks freely
+                                    Flexible(
+                                      flex: 3,
+                                      child: Image.asset(
+                                        'assets/images/lunarae_logo_1024x1024.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    
+                                    SizedBox(height: useExtraCompact ? 4 : 8),
+                                    
+                                    // Prompt helper title - hidden in extra compact
+                                    if (!useExtraCompact)
+                                      Text(
+                                        'Create me magical story about:',
+                                        style: scaledBodyStyle.copyWith(
+                                          fontSize: 15 * fontSizeProvider.scaleFactor,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    
+                                    if (!useExtraCompact)
+                                      const SizedBox(height: 8),
+                                    
+                                    // Prompt Input - pill-shaped, fewer lines when compact
+                                    _ScaledDreamyInput(
+                                      controller: promptController,
+                                      hintText: "A sleepy unicorn who can't find her stars…",
+                                      hintStyle: scaledHintStyle,
+                                      inputStyle: scaledBodyStyle,
+                                      onSubmitted: _isLoading ? null : _generateStory,
+                                      maxLines: useExtraCompact ? 1 : (useCompact ? 2 : 3),
+                                    ),
+                                    
+                                    SizedBox(height: useExtraCompact ? 4 : 8),
+                                    
+                                    // Primary Button
+                                    _ScaledDreamyPrimaryButton(
+                                      text: "Create My Bedtime Story",
+                                      textStyle: LunaTheme.buttonText(context).copyWith(
+                                        fontSize: 17 * fontSizeProvider.scaleFactor,
+                                      ),
+                                      onPressed: _isLoading ? null : _generateStory,
+                                      isLoading: _isLoading,
+                                      compact: useCompact || useExtraCompact,
+                                    ),
+                                    
+                                    SizedBox(height: useExtraCompact ? 2 : 4),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
                   },
                 ),
               ),
@@ -252,7 +355,9 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
             ],
           ),
         ),
-      ),
+        );
+      },
+    ),
     );
   }
 }
@@ -407,11 +512,10 @@ class _ScaledDreamyInput extends StatelessWidget {
       ),
       child: TextField(
         controller: controller,
-        maxLines: maxLines,
-        textInputAction:
-            onSubmitted != null ? TextInputAction.done : TextInputAction.newline,
-        keyboardType:
-            onSubmitted != null ? TextInputType.text : TextInputType.multiline,
+        maxLines: null,
+        minLines: 1,
+        textInputAction: TextInputAction.newline,
+        keyboardType: TextInputType.multiline,
         onSubmitted: onSubmitted != null ? (_) => onSubmitted!() : null,
         style: inputStyle.copyWith(
           color: LunaTheme.textPrimary(context),

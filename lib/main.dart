@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'theme/theme.dart';
 import 'screens/story_generator_screen.dart';
@@ -8,6 +9,12 @@ import 'services/font_size_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Lock to portrait orientation only
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+  
   await AdService.initialize();
   await AnalyticsService.logAppOpened();
   runApp(const LunaRaeApp());
