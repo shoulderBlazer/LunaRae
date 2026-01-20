@@ -271,6 +271,10 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                       // Calculate equal gap for top and bottom
                       final equalGap = dynamicGap * 1.2;
                       
+                      // Detect iPad (tablet) - typically width > 600 in portrait
+                      final screenWidth = MediaQuery.of(context).size.width;
+                      final isTablet = screenWidth > 600;
+                      
                       return Padding(
                         padding: EdgeInsets.only(
                           left: horizontalPadding,
@@ -281,16 +285,21 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                         child: DreamyCard(
                           child: Column(
                             children: [
-                              // Logo - flexible, shrinks freely
+                              // Logo - smaller on iPad, larger on phone
                               Flexible(
-                                flex: 3,
-                                child: Image.asset(
-                                  'assets/images/lunarae_logo_1024x1024.png',
-                                  fit: BoxFit.contain,
+                                flex: isTablet ? 2 : 3,
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: isTablet ? 8 : 0,
+                                  ),
+                                  child: Image.asset(
+                                    'assets/images/lunarae_logo_1024x1024.png',
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
                               ),
                               
-                              SizedBox(height: useExtraCompact ? 4 : 8),
+                              SizedBox(height: isTablet ? 16 : (useExtraCompact ? 4 : 8)),
                               
                               // Prompt helper title - hidden in extra compact
                               if (!useExtraCompact)
@@ -304,19 +313,24 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                                 ),
                               
                               if (!useExtraCompact)
-                                const SizedBox(height: 8),
+                                SizedBox(height: isTablet ? 16 : 8),
                               
-                              // Prompt Input - pill-shaped, fewer lines when compact
-                              _ScaledDreamyInput(
-                                controller: promptController,
-                                hintText: "A sleepy unicorn who can't find her stars…",
-                                hintStyle: scaledHintStyle,
-                                inputStyle: scaledBodyStyle,
-                                onSubmitted: _isLoading ? null : _generateStory,
-                                maxLines: useExtraCompact ? 1 : (useCompact ? 2 : 3),
+                              // Prompt Input - larger on iPad
+                              Flexible(
+                                flex: isTablet ? 2 : 0,
+                                fit: isTablet ? FlexFit.tight : FlexFit.loose,
+                                child: _ScaledDreamyInput(
+                                  controller: promptController,
+                                  hintText: "A sleepy unicorn who can't find her stars…",
+                                  hintStyle: scaledHintStyle,
+                                  inputStyle: scaledBodyStyle,
+                                  onSubmitted: _isLoading ? null : _generateStory,
+                                  maxLines: isTablet ? 5 : (useExtraCompact ? 1 : (useCompact ? 2 : 3)),
+                                  expandVertically: isTablet,
+                                ),
                               ),
                               
-                              SizedBox(height: useExtraCompact ? 4 : 8),
+                              SizedBox(height: isTablet ? 20 : (useExtraCompact ? 4 : 8)),
                               
                               // Primary Button
                               _ScaledDreamyPrimaryButton(
@@ -329,7 +343,7 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                                 compact: useCompact || useExtraCompact,
                               ),
                               
-                              SizedBox(height: useExtraCompact ? 2 : 4),
+                              SizedBox(height: isTablet ? 12 : (useExtraCompact ? 2 : 4)),
                             ],
                           ),
                         ),
@@ -484,6 +498,7 @@ class _ScaledDreamyInput extends StatelessWidget {
   final TextStyle inputStyle;
   final int maxLines;
   final VoidCallback? onSubmitted;
+  final bool expandVertically;
   
   const _ScaledDreamyInput({
     required this.controller,
@@ -492,6 +507,7 @@ class _ScaledDreamyInput extends StatelessWidget {
     required this.inputStyle,
     this.maxLines = 3,
     this.onSubmitted,
+    this.expandVertically = false,
   });
 
   @override
@@ -507,28 +523,53 @@ class _ScaledDreamyInput extends StatelessWidget {
           width: 1.5,
         ),
       ),
-      child: TextField(
-        controller: controller,
-        maxLines: null,
-        minLines: 1,
-        textInputAction: TextInputAction.newline,
-        keyboardType: TextInputType.multiline,
-        onSubmitted: onSubmitted != null ? (_) => onSubmitted!() : null,
-        style: inputStyle.copyWith(
-          color: LunaTheme.textPrimary(context),
-        ),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: hintStyle,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20, 
-            vertical: 32,
-          ),
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-        ),
-      ),
+      child: expandVertically
+          ? TextField(
+              controller: controller,
+              maxLines: null,
+              minLines: null,
+              expands: true,
+              textInputAction: TextInputAction.newline,
+              keyboardType: TextInputType.multiline,
+              textAlignVertical: TextAlignVertical.top,
+              onSubmitted: onSubmitted != null ? (_) => onSubmitted!() : null,
+              style: inputStyle.copyWith(
+                color: LunaTheme.textPrimary(context),
+              ),
+              decoration: InputDecoration(
+                hintText: hintText,
+                hintStyle: hintStyle,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20, 
+                  vertical: 24,
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+              ),
+            )
+          : TextField(
+              controller: controller,
+              maxLines: null,
+              minLines: 1,
+              textInputAction: TextInputAction.newline,
+              keyboardType: TextInputType.multiline,
+              onSubmitted: onSubmitted != null ? (_) => onSubmitted!() : null,
+              style: inputStyle.copyWith(
+                color: LunaTheme.textPrimary(context),
+              ),
+              decoration: InputDecoration(
+                hintText: hintText,
+                hintStyle: hintStyle,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20, 
+                  vertical: 32,
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+              ),
+            ),
     );
   }
 }
