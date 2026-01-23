@@ -10,9 +10,12 @@ import 'services/font_size_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Lock to portrait orientation only
+  // Enable all four orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
   ]);
   
   await AdService.initialize();
