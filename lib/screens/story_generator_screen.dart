@@ -187,15 +187,23 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                     
                     if (isLandscape) {
                       // Landscape single card layout
+                      // Detect iPad (tablet) for landscape mode
+                      final screenWidth = MediaQuery.of(context).size.width;
+                      final isTablet = screenWidth > 600;
+                      print('DEBUG: Landscape mode - screenWidth: $screenWidth, isTablet: $isTablet');
+                      // Make bottom gap same as top gap (dynamicGap)
+                      final landscapeBottomPadding = dynamicGap;
+                      
                       return Padding(
                         padding: EdgeInsets.only(
                           left: horizontalPadding,
                           right: horizontalPadding,
                           top: _headerHeight + dynamicGap,
-                          bottom: dynamicGap,
+                          bottom: landscapeBottomPadding,
                         ),
-                        child: IntrinsicHeight(
-                            child: DreamyCard(
+                        child: SizedBox(
+                          height: cardMaxHeight,
+                          child: DreamyCard(
                               child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
@@ -233,14 +241,14 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                                       if (!useExtraCompact)
                                         const SizedBox(height: 16),
                                       
-                                      // Prompt Input - pill-shaped, fewer lines when compact
+                                      // Prompt Input - pill-shaped, fewer lines when compact, bigger on iPad
                                       _ScaledDreamyInput(
                                         controller: promptController,
                                         hintText: "A sleepy unicorn who can't find her stars…",
-                                        hintStyle: scaledHintStyle,
-                                        inputStyle: scaledBodyStyle,
+                                        hintStyle: isTablet ? scaledHintStyle.copyWith(fontSize: 20 * fontSizeProvider.scaleFactor) : scaledHintStyle,
+                                        inputStyle: isTablet ? scaledBodyStyle.copyWith(fontSize: 20 * fontSizeProvider.scaleFactor) : scaledBodyStyle,
                                         onSubmitted: _isLoading ? null : _generateStory,
-                                        maxLines: useExtraCompact ? 1 : (useCompact ? 2 : 3),
+                                        maxLines: isTablet ? 6 : (useExtraCompact ? 1 : (useCompact ? 2 : 3)),
                                       ),
                                       
                                       SizedBox(height: useExtraCompact ? 8 : 16),
@@ -275,10 +283,13 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                       final screenWidth = MediaQuery.of(context).size.width;
                       final isTablet = screenWidth > 600;
                       
+                      // Responsive horizontal padding for iPad
+                      final responsiveHorizontalPadding = isTablet ? screenWidth * 0.03 : horizontalPadding;
+                      
                       return Padding(
                         padding: EdgeInsets.only(
-                          left: horizontalPadding,
-                          right: horizontalPadding,
+                          left: responsiveHorizontalPadding,
+                          right: responsiveHorizontalPadding,
                           top: _headerHeight + equalGap,
                           bottom: footerHeight + equalGap,
                         ),
