@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "98760878642",
+    "project_id": "lunarae-11f81",
+    "storage_bucket": "lunarae-11f81.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:98760878642:android:8078f32ee995900ec62a2b",
+        "android_client_info": {
+          "package_name": "com.example.lunarae"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASk-jLoh3BOdjZWOVJy9IoKMXxJcJMeVI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

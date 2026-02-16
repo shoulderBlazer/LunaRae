@@ -16,6 +16,7 @@ import '../config/api_keys.dart';
 import '../widgets/banner_ad_widget.dart' show BannerAdWithFooter;
 import '../widgets/dreamy_widgets.dart' show DreamyBackground, DreamyCard, DreamyInput, DreamyPrimaryButton, DreamySecondaryButton, MoonLoadingIndicator, DreamyPageRoute;
 import '../widgets/frosted_header.dart';
+import '../services/crashlytics_service.dart';
 
 class StoryGeneratorScreen extends StatefulWidget {
   const StoryGeneratorScreen({super.key});
@@ -155,6 +156,14 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
       extendBody: true,
       extendBodyBehindAppBar: true,
       bottomNavigationBar: BannerAdWithFooter(footerLinks: const _FooterLinks()),
+      floatingActionButton: kDebugMode 
+        ? FloatingActionButton(
+            mini: true,
+            onPressed: () => _showDebugMenu(context),
+            backgroundColor: Colors.red.withOpacity(0.8),
+            child: const Icon(Icons.bug_report, color: Colors.white),
+          )
+        : null,
       body: OrientationBuilder(
         builder: (context, orientation) {
           return GestureDetector(
@@ -380,6 +389,70 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
         );
       },
     ),
+    );
+  }
+
+  void _showDebugMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Crashlytics Debug Menu',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.error_outline),
+              title: const Text('Test Non-Fatal Crash'),
+              subtitle: const Text('Records a test error in Crashlytics'),
+              onTap: () {
+                Navigator.pop(context);
+                CrashlyticsService.testCrash();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Test error sent to Crashlytics')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.dangerous),
+              title: const Text('Test Fatal Crash'),
+              subtitle: const Text('Causes app to crash (fatal)'),
+              onTap: () {
+                Navigator.pop(context);
+                CrashlyticsService.forceCrash();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('Test Log Message'),
+              subtitle: const Text('Sends a test log to Crashlytics'),
+              onTap: () {
+                Navigator.pop(context);
+                CrashlyticsService.log('Debug log message from test menu');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Test log sent to Crashlytics')),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Check Firebase Console → Crashlytics for results',
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
     );
   }
 }
