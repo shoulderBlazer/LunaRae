@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.lunarae</string>
+	<string>com.lunarae.mobile</string>
 	<key>PROJECT_ID</key>
 	<string>lunarae-11f81</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:98760878642:ios:632bbc2ab71390d0c62a2b</string>
+	<string>1:98760878642:ios:61a3c2a0cf3e11ecc62a2b</string>
 </dict>
 </plist>

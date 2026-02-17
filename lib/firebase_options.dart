@@ -50,7 +50,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyASk-jLoh3BOdjZWOVJy9IoKMXxJcJMeVI',
+    apiKey: 'AIzaSyDu8FELY2EE5vQdOM2cnKEKdstARIpUZ24',
     appId: '1:98760878642:android:8078f32ee995900ec62a2b',
     messagingSenderId: '98760878642',
     projectId: 'lunarae-11f81',
@@ -58,12 +58,12 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDytV4fOBUjxzvX09JKMiYGY6RxDH4AhDQ',
-    appId: '1:98760878642:ios:632bbc2ab71390d0c62a2b',
+    apiKey: 'AIzaSyA2i98QdnGDy7yDniZBLzB9qeK4zDvTt7Q',
+    appId: '1:98760878642:ios:61a3c2a0cf3e11ecc62a2b',
     messagingSenderId: '98760878642',
     projectId: 'lunarae-11f81',
     storageBucket: 'lunarae-11f81.firebasestorage.app',
-    iosBundleId: 'com.example.lunarae',
+    iosBundleId: 'com.lunarae.mobile',
   );
 
 }
