@@ -39,7 +39,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
         debugPrint('Banner ad failed to load: ${error.message}');
       },
     );
-    _bannerAd!.load();
+    _bannerAd?.load();
   }
 
   @override
@@ -141,7 +141,7 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
         // Keep reserved space to prevent layout shift
       },
     );
-    _bannerAd!.load();
+    _bannerAd?.load();
   }
 
   @override
@@ -222,7 +222,7 @@ class _InlineBannerAdWidgetState extends State<InlineBannerAdWidget> {
         debugPrint('Banner ad failed to load: ${error.message}');
       },
     );
-    _bannerAd!.load();
+    _bannerAd?.load();
   }
 
   @override
@@ -306,16 +306,20 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
     final mediaQuery = MediaQuery.of(context);
     final textScaler = mediaQuery.textScaler;
     
+    // Check if this is a tablet to ensure consistent footer height across platforms
+    final screenWidth = mediaQuery.size.width;
+    final isTablet = screenWidth > 600 || (Theme.of(context).platform == TargetPlatform.android && screenWidth > 400);
+    
     // Footer link text base height (fontSize 10 + padding)
-    final footerLinksHeight = textScaler.scale(10) + 12; // 6px vertical padding * 2
+    final footerLinksHeight = isTablet ? 10 + 12 : textScaler.scale(10) + 12; // Use fixed height for tablets
     
     // Fixed components
     const separatorHeight = 5.0; // 1px line + 4px spacing
     const bannerHeight = _reservedAdHeight;
     const bottomPadding = 8.0; // minimum SafeArea bottom
     
-    // SafeArea bottom inset
-    final safeAreaBottom = mediaQuery.padding.bottom;
+    // SafeArea bottom inset - use fixed value for tablets to ensure consistency
+    final safeAreaBottom = isTablet ? 0.0 : mediaQuery.padding.bottom;
     
     return separatorHeight + footerLinksHeight + bannerHeight + bottomPadding + safeAreaBottom;
   }
@@ -356,7 +360,7 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
         debugPrint('Story output banner ad failed to load: ${error.message}');
       },
     );
-    _bannerAd!.load();
+    _bannerAd?.load();
   }
 
   @override

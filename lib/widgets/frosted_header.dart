@@ -17,12 +17,19 @@ class FrostedHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // For tablets (Android or iOS), use consistent top padding to ensure identical appearance
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600 || (Theme.of(context).platform == TargetPlatform.android && screenWidth > 400);
+    
+    // Use consistent top padding for tablets to match iPad appearance
+    final topPadding = isTablet ? 44.0 + 8 : MediaQuery.of(context).padding.top + 8;
+    
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
           padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 8,
+            top: topPadding,
             left: 16,
             right: 16,
             bottom: 12,

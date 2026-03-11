@@ -42,10 +42,10 @@ class AdMobConfig {
   // ============================================================
 
   /// Returns true if running on Android
-  static bool get isAndroid => Platform.isAndroid;
+  static bool get isAndroid => !kIsWeb && Platform.isAndroid;
 
   /// Returns true if running on iOS
-  static bool get isIOS => Platform.isIOS;
+  static bool get isIOS => !kIsWeb && Platform.isIOS;
 
   /// Returns true if running in debug mode (kReleaseMode is a compile-time constant)
   static bool get isDebugMode => !kReleaseMode;
@@ -103,6 +103,10 @@ class AdMobConfig {
 
   /// Gets production banner ID for Screen 1
   static String _getProductionBannerIdScreen1() {
+    if (kIsWeb) {
+      // Return empty string for web - ads won't be loaded anyway
+      return '';
+    }
     if (isAndroid) {
       return _androidBannerScreen1;
     } else if (isIOS) {
@@ -113,6 +117,10 @@ class AdMobConfig {
 
   /// Gets production banner ID for Screen 2
   static String _getProductionBannerIdScreen2() {
+    if (kIsWeb) {
+      // Return empty string for web - ads won't be loaded anyway
+      return '';
+    }
     if (isAndroid) {
       return _androidBannerScreen2;
     } else if (isIOS) {
@@ -123,6 +131,10 @@ class AdMobConfig {
 
   /// Gets production interstitial ID for After Story
   static String _getProductionInterstitialIdAfterStory() {
+    if (kIsWeb) {
+      // Return empty string for web - ads won't be loaded anyway
+      return '';
+    }
     if (isAndroid) {
       return _androidInterstitialAfterStory;
     } else if (isIOS) {
@@ -141,7 +153,7 @@ class AdMobConfig {
       debugPrint('╔══════════════════════════════════════════════════════════╗');
       debugPrint('║              AdMob Configuration Status                   ║');
       debugPrint('╠══════════════════════════════════════════════════════════╣');
-      debugPrint('║ Platform: ${isAndroid ? "Android" : isIOS ? "iOS" : "Unknown"}');
+      debugPrint('║ Platform: ${kIsWeb ? "Web" : isAndroid ? "Android" : isIOS ? "iOS" : "Unknown"}');
       debugPrint('║ Mode: ${isDebugMode ? "DEBUG (Test Ads)" : "RELEASE (Production Ads)"}');
       debugPrint('║ Banner Screen 1: ${bannerAdIdScreen1}');
       debugPrint('║ Banner Screen 2: ${bannerAdIdScreen2}');

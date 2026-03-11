@@ -288,12 +288,18 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                       // Calculate equal gap for top and bottom
                       final equalGap = dynamicGap * 1.2;
                       
-                      // Detect iPad (tablet) - typically width > 600 in portrait
+                      // Detect platform and tablet size to match iPad layout on Android tablets
                       final screenWidth = MediaQuery.of(context).size.width;
                       final isTablet = screenWidth > 600;
+                      final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+                      final isAndroid = Theme.of(context).platform == TargetPlatform.android;
                       
-                      // Responsive horizontal padding for iPad
-                      final responsiveHorizontalPadding = isTablet ? screenWidth * 0.03 : horizontalPadding;
+                      // Android tablets should use same layout as iPad tablets
+                      // Phones keep their current layout
+                      final useIPadLayout = isTablet; // All tablets use iPad-style layout
+                      
+                      // Responsive horizontal padding for iPad-style layout
+                      final responsiveHorizontalPadding = useIPadLayout ? screenWidth * 0.03 : horizontalPadding;
                       
                       return Padding(
                         padding: EdgeInsets.only(
@@ -305,12 +311,12 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                         child: DreamyCard(
                           child: Column(
                             children: [
-                              // Logo - smaller on iPad, larger on phone
+                              // Logo - smaller on iPad-style layout, larger on phone
                               Flexible(
-                                flex: isTablet ? 2 : 3,
+                                flex: useIPadLayout ? 2 : 3,
                                 child: Padding(
                                   padding: EdgeInsets.symmetric(
-                                    vertical: isTablet ? 8 : 0,
+                                    vertical: useIPadLayout ? 8 : 0,
                                   ),
                                   child: Image.asset(
                                     'assets/images/lunarae_logo_1024x1024.png',
@@ -319,7 +325,7 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                                 ),
                               ),
                               
-                              SizedBox(height: isTablet ? 16 : (useExtraCompact ? 4 : 8)),
+                              SizedBox(height: useIPadLayout ? 16 : (useExtraCompact ? 4 : 8)),
                               
                               // Prompt helper title - hidden in extra compact
                               if (!useExtraCompact)
@@ -333,24 +339,24 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                                 ),
                               
                               if (!useExtraCompact)
-                                SizedBox(height: isTablet ? 16 : 8),
+                                SizedBox(height: useIPadLayout ? 16 : 8),
                               
-                              // Prompt Input - larger on iPad
+                              // Prompt Input - larger on iPad-style layout
                               Flexible(
-                                flex: isTablet ? 2 : 0,
-                                fit: isTablet ? FlexFit.tight : FlexFit.loose,
+                                flex: useIPadLayout ? 2 : 0,
+                                fit: useIPadLayout ? FlexFit.tight : FlexFit.loose,
                                 child: _ScaledDreamyInput(
                                   controller: promptController,
                                   hintText: "A sleepy unicorn who can't find her stars…",
                                   hintStyle: scaledHintStyle,
                                   inputStyle: scaledBodyStyle,
                                   onSubmitted: _isLoading ? null : _generateStory,
-                                  maxLines: isTablet ? 5 : (useExtraCompact ? 1 : (useCompact ? 2 : 3)),
-                                  expandVertically: isTablet,
+                                  maxLines: useIPadLayout ? 5 : (useExtraCompact ? 1 : (useCompact ? 2 : 3)),
+                                  expandVertically: useIPadLayout,
                                 ),
                               ),
                               
-                              SizedBox(height: isTablet ? 20 : (useExtraCompact ? 4 : 8)),
+                              SizedBox(height: useIPadLayout ? 20 : (useExtraCompact ? 4 : 8)),
                               
                               // Primary Button
                               _ScaledDreamyPrimaryButton(
@@ -363,7 +369,7 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
                                 compact: useCompact || useExtraCompact,
                               ),
                               
-                              SizedBox(height: isTablet ? 12 : (useExtraCompact ? 2 : 4)),
+                              SizedBox(height: useIPadLayout ? 12 : (useExtraCompact ? 2 : 4)),
                             ],
                           ),
                         ),

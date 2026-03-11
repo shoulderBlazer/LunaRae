@@ -40,7 +40,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   bool _hasReachedStoryBottom = false;
   
   final GlobalKey _headerKey = GlobalKey();
-  double _headerHeight = 0;
+  double _headerHeight = 60; // Default fallback height for header
 
   @override
   void initState() {
@@ -163,6 +163,24 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                   // Card area: top margin (dynamicGap) + card + bottom margin (dynamicGap)
                   final cardMaxHeight = availableHeight - dynamicGap - dynamicGap;
                   
+                  // Detect platform and tablet size to match iPad layout on Android tablets
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+                  final isAndroid = Theme.of(context).platform == TargetPlatform.android;
+                  
+                  // Android tablets should use EXACTLY the same layout as iPad tablets
+                  // Both get iPad-style layout when screenWidth > 600 OR when it's an Android device with any tablet-like dimensions
+                  final isTabletSize = screenWidth > 600;
+                  final useIPadLayout = isTabletSize || (isAndroid && screenWidth > 400); // Android tablets always match iPad layout
+                  
+                  // For iPad-style layout (all tablets), reduce bottom gap to minimize space between story box and footer
+                  // Keep phone layout unchanged to maintain current appearance
+                  final bottomPadding = useIPadLayout ? 8.0 : 16.0;
+                  
+                  // Adjust cardMaxHeight to account for reduced bottom padding on iPad-style layout
+                  // This prevents overflow by giving the card slightly less max height
+                  final adjustedCardMaxHeight = cardMaxHeight - (useIPadLayout ? 16.0 : 0.0);
+                  
                   return SingleChildScrollView(
                     physics: const ClampingScrollPhysics(),
                     child: Padding(
@@ -176,7 +194,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                           // Large centered Story Card - constrained to end above footer
                           ConstrainedBox(
                             constraints: BoxConstraints(
-                              maxHeight: cardMaxHeight,
+                              maxHeight: adjustedCardMaxHeight,
                             ),
                             child: FadeTransition(
                               opacity: _fadeAnimation,
@@ -255,7 +273,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: bottomPadding),
                         ],
                       ),
                     ),

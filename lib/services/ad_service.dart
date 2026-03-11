@@ -9,7 +9,7 @@ class AdService {
 
   /// Initialize AdMob SDK
   static Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (_isInitialized || kIsWeb) return;
     await MobileAds.instance.initialize();
     _isInitialized = true;
     
@@ -21,10 +21,14 @@ class AdService {
   }
 
   /// Create a banner ad for Screen 1
-  static BannerAd createBannerAdScreen1({
+  static BannerAd? createBannerAdScreen1({
     required Function() onLoaded,
     required Function(LoadAdError) onFailed,
   }) {
+    if (kIsWeb) {
+      onFailed(LoadAdError(1, 'web', 'Web platform not supported', null));
+      return null;
+    }
     return BannerAd(
       adUnitId: AdMobConfig.bannerAdIdScreen1,
       size: AdSize.banner,
@@ -40,10 +44,14 @@ class AdService {
   }
 
   /// Create a banner ad for Screen 2
-  static BannerAd createBannerAdScreen2({
+  static BannerAd? createBannerAdScreen2({
     required Function() onLoaded,
     required Function(LoadAdError) onFailed,
   }) {
+    if (kIsWeb) {
+      onFailed(LoadAdError(1, 'web', 'Web platform not supported', null));
+      return null;
+    }
     return BannerAd(
       adUnitId: AdMobConfig.bannerAdIdScreen2,
       size: AdSize.banner,
@@ -59,7 +67,7 @@ class AdService {
   }
 
   /// Legacy method for backwards compatibility - uses Screen 1 banner
-  static BannerAd createBannerAd({
+  static BannerAd? createBannerAd({
     required Function() onLoaded,
     required Function(LoadAdError) onFailed,
   }) {
@@ -71,6 +79,7 @@ class AdService {
 
   /// Load the interstitial ad (call this ahead of time)
   static void loadInterstitialAd() {
+    if (kIsWeb) return;
     // Don't load if already loading or ready
     if (_isInterstitialAdReady && _interstitialAd != null) return;
     
@@ -122,6 +131,10 @@ class AdService {
   /// [onDismissed] is called after the ad closes (or immediately if ad not ready)
   /// Returns true if ad was shown, false if user should continue immediately
   static bool showInterstitialAdAfterStory({VoidCallback? onDismissed}) {
+    if (kIsWeb) {
+      onDismissed?.call();
+      return false;
+    }
     if (_isInterstitialAdReady && _interstitialAd != null) {
       _onInterstitialDismissed = onDismissed;
       _interstitialAd!.show();
