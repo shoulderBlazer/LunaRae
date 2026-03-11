@@ -254,8 +254,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                                     Text(
                                       'LunaRae uses the following third-party services:\n'
                                       '• OpenAI (story generation)\n'
-                                      '• Google AdMob (advertising)\n'
-                                      '• Firebase Analytics & Crash Reporting (performance monitoring)\n\n'
+                                      '• Google AdMob (advertising)\n\n'
                                       'Each provider has its own privacy policy.',
                                       style: scaledBodyStyle.copyWith(height: 1.6),
                                     ),

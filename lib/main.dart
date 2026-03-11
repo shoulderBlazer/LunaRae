@@ -1,38 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 import 'theme/theme.dart';
 import 'screens/story_generator_screen.dart';
 import 'services/ad_service.dart';
-import 'services/analytics_service.dart';
-import 'services/crashlytics_service.dart';
 import 'services/font_size_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
-  // Initialize Crashlytics
-  await CrashlyticsService.initialize();
-  
-  // Set up global error handling
-  FlutterError.onError = (FlutterErrorDetails details) {
-    CrashlyticsService.recordError(
-      details.exception,
-      details.stack,
-      fatal: true,
-      information: {
-        'context': 'FlutterError.onError',
-        'library': details.library,
-      },
-    );
-  };
   
   // Enable all four orientations
   await SystemChrome.setPreferredOrientations([
@@ -43,7 +18,6 @@ void main() async {
   ]);
   
   await AdService.initialize();
-  await AnalyticsService.logAppOpened();
   runApp(const LunaRaeApp());
 }
 

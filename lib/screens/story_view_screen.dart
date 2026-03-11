@@ -8,7 +8,6 @@ import '../services/font_size_provider.dart';
 import '../widgets/banner_ad_widget.dart' show StoryOutputBannerAd;
 import '../widgets/dreamy_widgets.dart';
 import '../widgets/frosted_header.dart';
-import '../services/analytics_service.dart';
 import '../services/ad_service.dart';
 import 'privacy_screen.dart';
 import 'terms_screen.dart';
@@ -45,7 +44,6 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   @override
   void initState() {
     super.initState();
-    AnalyticsService.logScreenStoryOpened();
     
     // Fade-in animation for story appearance (250-300ms)
     _fadeController = AnimationController(
@@ -103,9 +101,6 @@ class _StoryViewScreenState extends State<StoryViewScreen>
     if (_hasReachedStoryBottom) return;
     _hasReachedStoryBottom = true;
     
-    // Log analytics event for story completion
-    AnalyticsService.logStoryScrolledToBottom();
-    
     // Show interstitial ad after 5 second delay (gives user time to read ending)
     Future.delayed(const Duration(seconds: 8), () {
       if (mounted) {
@@ -130,7 +125,6 @@ class _StoryViewScreenState extends State<StoryViewScreen>
     if (adShown) {
       // Only mark as shown if ad was actually displayed
       _hasShownInterstitial = true;
-      AnalyticsService.logAdInterstitialShown();
     }
     // Note: if ad not ready, showInterstitialAdAfterStory already calls onComplete
   }

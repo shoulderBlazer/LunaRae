@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../services/ad_service.dart';
-import '../services/analytics_service.dart';
 import '../theme/theme.dart';
 
 /// Dreamy styled banner ad widget with rounded container and "Advertisement" label
@@ -31,7 +30,6 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
       onLoaded: () {
         if (mounted) {
           setState(() => _isAdLoaded = true);
-          AnalyticsService.logAdBannerShown();
         }
       },
       onFailed: (error) {
@@ -132,7 +130,6 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
       onLoaded: () {
         if (mounted) {
           setState(() => _isAdLoaded = true);
-          AnalyticsService.logAdBannerShown();
         }
       },
       onFailed: (error) {
@@ -214,7 +211,6 @@ class _InlineBannerAdWidgetState extends State<InlineBannerAdWidget> {
       onLoaded: () {
         if (mounted) {
           setState(() => _isAdLoaded = true);
-          AnalyticsService.logAdBannerShown();
         }
       },
       onFailed: (error) {
@@ -350,9 +346,6 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
       onLoaded: () {
         if (mounted) {
           setState(() => _isAdLoaded = true);
-          // Trigger fade-in animation when ad loads
-          _fadeController.forward();
-          AnalyticsService.logAdBannerShown();
         }
       },
       onFailed: (error) {
