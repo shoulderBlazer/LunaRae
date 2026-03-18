@@ -28,3 +28,9 @@
 -keep class io.flutter.**  { *; }
 -keep class io.flutter.embedding.** { *; }
 -keep class io.flutter.embedding.engine.** { *; }
+
+# Google Play Core classes for Flutter Play Store split compatibility
+-keep class com.google.android.play.core.** { *; }
+-keep class com.google.android.play.core.splitcompat.** { *; }
+-keep class com.google.android.play.core.splitinstall.** { *; }
+-keep class com.google.android.play.core.tasks.** { *; }
