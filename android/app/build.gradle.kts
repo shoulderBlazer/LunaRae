@@ -44,11 +44,7 @@ android {
         release {
             // Use release signing configuration
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            isMinifyEnabled = false
         }
     }
 }
