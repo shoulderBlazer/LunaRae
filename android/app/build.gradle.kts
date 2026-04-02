@@ -33,10 +33,21 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("my-release-key.jks") // leave this or remove
-            storePassword = System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
+            // Codemagic's automatic variable for the uploaded file path
+            val keystorePath = System.getenv("CM_KEYSTORE_PATH")
+            
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("CM_KEY_ALIAS")
+                keyPassword = System.getenv("CM_KEY_PASSWORD")
+            } else {
+                // Fallback for local builds if you have the file locally
+                storeFile = file("my-release-key.jks")
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
         }
     }
 
