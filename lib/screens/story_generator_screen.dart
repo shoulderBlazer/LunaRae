@@ -655,12 +655,12 @@ class _ScaledDreamyPrimaryButtonState extends State<_ScaledDreamyPrimaryButton>
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(
-            vertical: widget.compact ? 12 : 18, 
-            horizontal: widget.compact ? 16 : 24,
+            vertical: widget.compact ? 14 : 20, 
+            horizontal: widget.compact ? 18 : 28,
           ),
           decoration: BoxDecoration(
             gradient: LunaTheme.buttonGradient(context),
-            borderRadius: BorderRadius.circular(LunaTheme.radiusButton),
+            borderRadius: BorderRadius.circular(LunaTheme.radiusButton + 6),
             boxShadow: [
               BoxShadow(
                 color: LunaTheme.primary(context).withOpacity(0.4),
