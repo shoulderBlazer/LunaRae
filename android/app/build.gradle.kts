@@ -31,10 +31,12 @@ android {
         versionName = flutter.versionName
     }
 
+    val keystorePath = System.getenv("CM_KEYSTORE_PATH")
+    require(!keystorePath.isNullOrEmpty()) { "CM_KEYSTORE_PATH is not set!" }
+    
     signingConfigs {
         create("release") {
-            // Codemagic will provide the path to your uploaded keystore
-            storeFile = file(System.getenv("CM_KEYSTORE_PATH"))
+            storeFile = file(keystorePath)
             storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias = System.getenv("KEY_ALIAS")
             keyPassword = System.getenv("KEY_PASSWORD")
