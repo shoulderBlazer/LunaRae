@@ -1,4 +1,4 @@
-plugins {
+    plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -31,12 +31,9 @@ android {
         versionName = flutter.versionName
     }
 
-    val keystorePath = System.getenv("CM_KEYSTORE_PATH")
-    require(!keystorePath.isNullOrEmpty()) { "CM_KEYSTORE_PATH is not set!" }
-    
     signingConfigs {
         create("release") {
-            storeFile = file(keystorePath)
+            storeFile = file("my-release-key.jks") // leave this or remove
             storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias = System.getenv("KEY_ALIAS")
             keyPassword = System.getenv("KEY_PASSWORD")
