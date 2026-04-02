@@ -33,7 +33,8 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("my-release-key.jks")
+            // Codemagic will provide the path to your uploaded keystore
+            storeFile = file(System.getenv("CM_KEYSTORE_PATH"))
             storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias = System.getenv("KEY_ALIAS")
             keyPassword = System.getenv("KEY_PASSWORD")
