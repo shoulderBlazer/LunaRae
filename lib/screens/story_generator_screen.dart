@@ -542,6 +542,7 @@ class _ScaledDreamyInput extends StatelessWidget {
       child: expandVertically
           ? TextField(
               controller: controller,
+              textCapitalization: TextCapitalization.sentences,
               maxLines: null,
               minLines: null,
               expands: true,
