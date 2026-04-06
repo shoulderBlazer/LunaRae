@@ -567,6 +567,7 @@ class _ScaledDreamyInput extends StatelessWidget {
             )
           : TextField(
               controller: controller,
+              textCapitalization: TextCapitalization.sentences,
               maxLines: null,
               minLines: 1,
               textInputAction: TextInputAction.newline,
