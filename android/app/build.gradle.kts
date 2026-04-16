@@ -1,10 +1,9 @@
-    plugins {
+plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
-
 
 android {
     namespace = "com.lunarae.mobile"
@@ -21,28 +20,32 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.lunarae.mobile"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    // --- ADD THIS BLOCK START ---
+    flavorDimensions += "default"
+    productFlavors {
+        create("android-production") {
+            dimension = "default"
+            // You can add unique settings here if needed
+        }
+    }
+    // --- ADD THIS BLOCK END ---
+
     signingConfigs {
         create("release") {
-            // Codemagic's automatic variable for the uploaded file path
             val keystorePath = System.getenv("CM_KEYSTORE_PATH")
-            
             if (keystorePath != null) {
                 storeFile = file(keystorePath)
                 storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("CM_KEY_ALIAS")
                 keyPassword = System.getenv("CM_KEY_PASSWORD")
             } else {
-                // Fallback for local builds if you have the file locally
                 storeFile = file("my-release-key.jks")
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
