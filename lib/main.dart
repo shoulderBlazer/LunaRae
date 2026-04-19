@@ -12,9 +12,6 @@ void main() async {
   // Enable all four orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
   ]);
   
   await AdService.initialize();
