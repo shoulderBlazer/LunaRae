@@ -13,11 +13,6 @@ class AdService {
     await MobileAds.instance.initialize();
     _isInitialized = true;
     
-    // Debug: Print current config in debug mode
-    AdMobConfig.debugPrintConfig();
-    
-    // Validate production config in release mode
-    AdMobConfig.validateProductionConfig();
   }
 
   /// Create a banner ad for Screen 1
