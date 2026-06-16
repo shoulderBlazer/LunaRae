@@ -396,7 +396,7 @@ class _FooterLinks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Light color for dark footer background
-    final linkColor = Colors.white.withOpacity(0.7);
+    final linkColor = Colors.white.withValues(alpha: 0.7);
     const textStyle = TextStyle(
       fontSize: 10,
       fontWeight: FontWeight.w400,
@@ -489,10 +489,10 @@ class _FontSizeButton extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: LunaTheme.primary(context).withOpacity(0.15),
+          color: LunaTheme.primary(context).withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: LunaTheme.primary(context).withOpacity(0.3),
+            color: LunaTheme.primary(context).withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -535,7 +535,7 @@ class _ScaledDreamyInput extends StatelessWidget {
           maxLines > 1 ? 20 : LunaTheme.radiusInput,
         ),
         border: Border.all(
-          color: LunaTheme.primary(context).withOpacity(0.2),
+          color: LunaTheme.primary(context).withValues(alpha: 0.2),
           width: 1.5,
         ),
       ),
@@ -665,7 +665,7 @@ class _ScaledDreamyPrimaryButtonState extends State<_ScaledDreamyPrimaryButton>
             borderRadius: BorderRadius.circular(LunaTheme.radiusButton + 6),
             boxShadow: [
               BoxShadow(
-                color: LunaTheme.primary(context).withOpacity(0.4),
+                color: LunaTheme.primary(context).withValues(alpha: 0.4),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),

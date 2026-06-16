@@ -113,7 +113,7 @@ class _DreamyPrimaryButtonState extends State<DreamyPrimaryButton>
             borderRadius: BorderRadius.circular(LunaTheme.radiusButton),
             boxShadow: [
               BoxShadow(
-                color: LunaTheme.primary(context).withOpacity(0.4),
+                color: LunaTheme.primary(context).withValues(alpha: 0.4),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -211,7 +211,7 @@ class _DreamySecondaryButtonState extends State<DreamySecondaryButton>
             gradient: LunaTheme.secondaryButtonGradient(context),
             borderRadius: BorderRadius.circular(LunaTheme.radiusButton),
             border: Border.all(
-              color: LunaTheme.secondary(context).withOpacity(0.3),
+              color: LunaTheme.secondary(context).withValues(alpha: 0.3),
               width: 1.5,
             ),
           ),
@@ -267,7 +267,7 @@ class DreamyInput extends StatelessWidget {
           maxLines > 1 ? 20 : LunaTheme.radiusInput,
         ),
         border: Border.all(
-          color: LunaTheme.primary(context).withOpacity(0.2),
+          color: LunaTheme.primary(context).withValues(alpha: 0.2),
           width: 1.5,
         ),
       ),
@@ -406,7 +406,7 @@ class LunaRaeTitle extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: LunaTheme.darkPrimary.withOpacity(0.5),
+                      color: LunaTheme.darkPrimary.withValues(alpha: 0.5),
                       blurRadius: 20,
                       spreadRadius: 2,
                     ),
@@ -427,7 +427,7 @@ class LunaRaeTitle extends StatelessWidget {
             shadows: isDark
                 ? [
                     Shadow(
-                      color: LunaTheme.darkPrimary.withOpacity(0.6),
+                      color: LunaTheme.darkPrimary.withValues(alpha: 0.6),
                       blurRadius: 20,
                     ),
                   ]

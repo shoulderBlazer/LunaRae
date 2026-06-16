@@ -228,7 +228,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                                         gradient: LinearGradient(
                                           colors: [
                                             Colors.transparent,
-                                            LunaTheme.primary(context).withOpacity(0.3),
+                                            LunaTheme.primary(context).withValues(alpha: 0.3),
                                             Colors.transparent,
                                           ],
                                         ),
@@ -257,7 +257,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                                         'Uses OpenAI technology',
                                         style: LunaTheme.body(context).copyWith(
                                           fontSize: 10,
-                                          color: LunaTheme.primary(context).withOpacity(0.5),
+                                          color: LunaTheme.primary(context).withValues(alpha: 0.5),
                                           fontStyle: FontStyle.italic,
                                         ),
                                       ),
@@ -377,7 +377,7 @@ class _EmptyState extends StatelessWidget {
             Icon(
               Icons.auto_awesome,
               size: 48,
-              color: LunaTheme.primary(context).withOpacity(0.5),
+              color: LunaTheme.primary(context).withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -402,7 +402,7 @@ class _FooterLinks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Light color for dark footer background
-    final linkColor = Colors.white.withOpacity(0.7);
+    final linkColor = Colors.white.withValues(alpha: 0.7);
     const textStyle = TextStyle(
       fontSize: 10,
       fontWeight: FontWeight.w400,
@@ -495,10 +495,10 @@ class _FontSizeButton extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: LunaTheme.primary(context).withOpacity(0.15),
+          color: LunaTheme.primary(context).withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: LunaTheme.primary(context).withOpacity(0.3),
+            color: LunaTheme.primary(context).withValues(alpha: 0.3),
             width: 1,
           ),
         ),

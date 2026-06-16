@@ -86,16 +86,16 @@ class LunaTheme {
     return [
       BoxShadow(
         color: isDark
-            ? darkPrimary.withOpacity(0.15)  // Moon glow
-            : lightPrimary.withOpacity(0.25), // Lavender glow
+            ? darkPrimary.withValues(alpha: 0.15)  // Moon glow
+            : lightPrimary.withValues(alpha: 0.25), // Lavender glow
         blurRadius: 24,
         spreadRadius: 0,
         offset: const Offset(0, 8),
       ),
       BoxShadow(
         color: isDark
-            ? Colors.black.withOpacity(0.3)
-            : Colors.black.withOpacity(0.05),
+            ? Colors.black.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.05),
         blurRadius: 12,
         offset: const Offset(0, 4),
       ),
@@ -107,8 +107,8 @@ class LunaTheme {
     final isDark = isDarkMode(context);
     return LinearGradient(
       colors: isDark
-          ? [darkPrimary, darkPrimary.withOpacity(0.85)]
-          : [lightPrimary, lightPrimary.withOpacity(0.85)],
+          ? [darkPrimary, darkPrimary.withValues(alpha: 0.85)]
+          : [lightPrimary, lightPrimary.withValues(alpha: 0.85)],
     );
   }
 
@@ -117,8 +117,8 @@ class LunaTheme {
     final isDark = isDarkMode(context);
     return LinearGradient(
       colors: isDark
-          ? [darkSecondary.withOpacity(0.3), darkSecondary.withOpacity(0.2)]
-          : [lightSecondary.withOpacity(0.6), lightSecondary.withOpacity(0.4)],
+          ? [darkSecondary.withValues(alpha: 0.3), darkSecondary.withValues(alpha: 0.2)]
+          : [lightSecondary.withValues(alpha: 0.6), lightSecondary.withValues(alpha: 0.4)],
     );
   }
 
@@ -161,7 +161,7 @@ class LunaTheme {
   static TextStyle hintText(BuildContext context) => GoogleFonts.nunito(
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        color: textSecondary(context).withOpacity(0.7),
+        color: textSecondary(context).withValues(alpha: 0.7),
         fontStyle: FontStyle.italic,
       );
 
@@ -169,7 +169,7 @@ class LunaTheme {
   static TextStyle adLabel(BuildContext context) => GoogleFonts.nunito(
         fontSize: 11,
         fontWeight: FontWeight.w500,
-        color: textSecondary(context).withOpacity(0.6),
+        color: textSecondary(context).withValues(alpha: 0.6),
         letterSpacing: 0.5,
       );
 

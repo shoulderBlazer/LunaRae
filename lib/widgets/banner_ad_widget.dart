@@ -58,7 +58,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
         child: Container(
-          color: (isDark ? LunaTheme.darkGradientStart : LunaTheme.lightPrimary).withOpacity(0.9),
+          color: (isDark ? LunaTheme.darkGradientStart : LunaTheme.lightPrimary).withValues(alpha: 0.9),
           child: SafeArea(
             top: false,
             child: SizedBox(
@@ -155,7 +155,7 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
         child: Container(
-          color: (isDark ? LunaTheme.darkGradientStart : LunaTheme.lightPrimary).withOpacity(0.9),
+          color: (isDark ? LunaTheme.darkGradientStart : LunaTheme.lightPrimary).withValues(alpha: 0.9),
           child: SafeArea(
             top: false,
             minimum: const EdgeInsets.only(bottom: 8),
@@ -247,10 +247,10 @@ class _InlineBannerAdWidgetState extends State<InlineBannerAdWidget> {
           const SizedBox(height: 6),
           Container(
             decoration: BoxDecoration(
-              color: LunaTheme.cardColor(context).withOpacity(isDark ? 0.6 : 0.8),
+              color: LunaTheme.cardColor(context).withValues(alpha: isDark ? 0.6 : 0.8),
               borderRadius: BorderRadius.circular(LunaTheme.radiusAd),
               border: Border.all(
-                color: LunaTheme.primary(context).withOpacity(0.1),
+                color: LunaTheme.primary(context).withValues(alpha: 0.1),
                 width: 1,
               ),
             ),
@@ -371,7 +371,7 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
         child: Container(
-          color: (isDark ? LunaTheme.darkGradientStart : LunaTheme.lightPrimary).withOpacity(0.9),
+          color: (isDark ? LunaTheme.darkGradientStart : LunaTheme.lightPrimary).withValues(alpha: 0.9),
           child: SafeArea(
             top: false,
             minimum: const EdgeInsets.only(bottom: 8),
@@ -385,7 +385,7 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
                     gradient: LinearGradient(
                       colors: [
                         Colors.transparent,
-                        LunaTheme.primary(context).withOpacity(0.2),
+                        LunaTheme.primary(context).withValues(alpha: 0.2),
                         Colors.transparent,
                       ],
                     ),

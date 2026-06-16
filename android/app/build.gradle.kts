@@ -27,16 +27,6 @@ android {
         versionName = flutter.versionName
     }
 
-    // --- ADD THIS BLOCK START ---
-    flavorDimensions += "default"
-    productFlavors {
-        create("android-production") {
-            dimension = "default"
-            // You can add unique settings here if needed
-        }
-    }
-    // --- ADD THIS BLOCK END ---
-
     signingConfigs {
         create("release") {
             val keystorePath = System.getenv("CM_KEYSTORE_PATH")
@@ -55,6 +45,9 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+        }
         getByName("release") {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false

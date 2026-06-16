@@ -105,7 +105,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                                 gradient: LinearGradient(
                                   colors: [
                                     Colors.transparent,
-                                    LunaTheme.primary(context).withOpacity(0.3),
+                                    LunaTheme.primary(context).withValues(alpha: 0.3),
                                     Colors.transparent,
                                   ],
                                 ),
@@ -341,7 +341,7 @@ class _FooterLinks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Light color for dark footer background
-    final linkColor = Colors.white.withOpacity(0.7);
+    final linkColor = Colors.white.withValues(alpha: 0.7);
     const textStyle = TextStyle(
       fontSize: 10,
       fontWeight: FontWeight.w400,
@@ -431,10 +431,10 @@ class _FontSizeButton extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: LunaTheme.primary(context).withOpacity(0.15),
+          color: LunaTheme.primary(context).withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: LunaTheme.primary(context).withOpacity(0.3),
+            color: LunaTheme.primary(context).withValues(alpha: 0.3),
             width: 1,
           ),
         ),

@@ -109,7 +109,7 @@ class _FontSizeSelectorSheet extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: primaryColor.withOpacity(0.2),
+            color: primaryColor.withValues(alpha: 0.2),
             blurRadius: 20,
             spreadRadius: 2,
           ),
@@ -123,7 +123,7 @@ class _FontSizeSelectorSheet extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: textColor.withOpacity(0.3),
+              color: textColor.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -224,7 +224,7 @@ class _FontSizeOptionButton extends StatelessWidget {
           color: isSelected ? primaryColor : backgroundColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? primaryColor : textColor.withOpacity(0.2),
+            color: isSelected ? primaryColor : textColor.withValues(alpha: 0.2),
             width: 2,
           ),
         ),
@@ -244,7 +244,7 @@ class _FontSizeOptionButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: isSelected ? backgroundColor : textColor.withOpacity(0.7),
+                color: isSelected ? backgroundColor : textColor.withValues(alpha: 0.7),
               ),
             ),
           ],

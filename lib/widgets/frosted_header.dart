@@ -35,10 +35,10 @@ class FrostedHeader extends StatelessWidget {
             bottom: 12,
           ),
           decoration: BoxDecoration(
-            color: LunaTheme.cardColor(context).withOpacity(0.6),
+            color: LunaTheme.cardColor(context).withValues(alpha: 0.6),
             border: Border(
               bottom: BorderSide(
-                color: LunaTheme.primary(context).withOpacity(0.15),
+                color: LunaTheme.primary(context).withValues(alpha: 0.15),
                 width: 1,
               ),
             ),
@@ -54,7 +54,7 @@ class FrostedHeader extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: LunaTheme.primary(context).withOpacity(0.2),
+                        color: LunaTheme.primary(context).withValues(alpha: 0.2),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
