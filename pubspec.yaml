@@ -27,6 +27,9 @@ dependencies:
   webview_flutter: 4.8.0
   webview_flutter_android: ^3.16.9
   webview_flutter_wkwebview: 3.13.0
+  firebase_core: ^4.10.0
+  firebase_analytics: ^12.4.2
+  firebase_crashlytics: ^5.2.3
 
 dev_dependencies:
   flutter_test:
