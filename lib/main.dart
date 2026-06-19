@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'dart:ui';
 
@@ -9,6 +10,7 @@ import 'theme/theme.dart';
 import 'screens/story_generator_screen.dart';
 import 'services/ad_service.dart';
 import 'services/font_size_provider.dart';
+import 'services/firebase_analytics_service.dart';
 import 'firebase_options.dart';
 
 import 'dart:async';
@@ -37,6 +39,21 @@ void _initializeServices() {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+
+      // Enable Analytics debug mode for development
+      await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
+      
+      // Initialize Analytics
+      await FirebaseAnalyticsService().initialize();
+
+      // Test event for iOS Analytics verification - use service wrapper
+      await FirebaseAnalyticsService().logEvent(
+        name: 'ios_startup_test',
+        parameters: {
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+      debugPrint('ios_startup_test sent via service');
 
       // Configure Crashlytics
       FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;

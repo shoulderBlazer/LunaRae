@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme.dart';
 import '../services/font_size_provider.dart';
+import '../services/firebase_analytics_service.dart';
 import 'story_view_screen.dart';
 import 'privacy_screen.dart';
 import 'terms_screen.dart';
@@ -97,6 +98,16 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
       
       // Create a summary title from the prompt
       final summaryTitle = _createStoryTitle(promptController.text.trim());
+      
+      // Log analytics event for story generation
+      await FirebaseAnalyticsService().logEvent(
+        name: 'story_generated',
+        parameters: {
+          'prompt_length': promptController.text.trim().length,
+          'story_length': story.length,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
       
       Navigator.push(
         context,

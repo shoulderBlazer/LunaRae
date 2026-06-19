@@ -73,7 +73,7 @@ class FirebaseAnalyticsService {
           } else {
             await _analytics!.logEvent(
               name: event.name,
-              parameters: event.parameters,
+              parameters: event.parameters.cast<String, Object>(),
             );
           }
           success = true;
@@ -93,7 +93,7 @@ class FirebaseAnalyticsService {
             } else {
               await _analytics!.logEvent(
                 name: event.name,
-                parameters: event.parameters,
+                parameters: event.parameters.cast<String, Object>(),
               );
             }
             success = true;
@@ -150,7 +150,7 @@ class FirebaseAnalyticsService {
     if (_ensureInitialized()) {
       await _analytics!.logEvent(
         name: 'onboarding_completed',
-        parameters: parameters,
+        parameters: parameters.cast<String, Object>(),
       );
     } else {
       _queueEvent('onboarding_completed', parameters);
@@ -167,7 +167,7 @@ class FirebaseAnalyticsService {
     if (_ensureInitialized()) {
       await _analytics!.logEvent(
         name: 'mood_selected',
-        parameters: parameters,
+        parameters: parameters.cast<String, Object>(),
       );
     } else {
       _queueEvent('mood_selected', parameters);
@@ -184,7 +184,7 @@ class FirebaseAnalyticsService {
     if (_ensureInitialized()) {
       await _analytics!.logEvent(
         name: 'journal_created',
-        parameters: parameters,
+        parameters: parameters.cast<String, Object>(),
       );
     } else {
       _queueEvent('journal_created', parameters);
@@ -201,7 +201,7 @@ class FirebaseAnalyticsService {
     if (_ensureInitialized()) {
       await _analytics!.logEvent(
         name: 'affirmation_viewed',
-        parameters: parameters,
+        parameters: parameters.cast<String, Object>(),
       );
     } else {
       _queueEvent('affirmation_viewed', parameters);
@@ -217,7 +217,7 @@ class FirebaseAnalyticsService {
     if (_ensureInitialized()) {
       await _analytics!.logEvent(
         name: 'ai_chat_opened',
-        parameters: parameters,
+        parameters: parameters.cast<String, Object>(),
       );
     } else {
       _queueEvent('ai_chat_opened', parameters);
@@ -234,7 +234,7 @@ class FirebaseAnalyticsService {
     if (_ensureInitialized()) {
       await _analytics!.logEvent(
         name: 'ai_chat_message_sent',
-        parameters: parameters,
+        parameters: parameters.cast<String, Object>(),
       );
     } else {
       _queueEvent('ai_chat_message_sent', parameters);
@@ -252,7 +252,7 @@ class FirebaseAnalyticsService {
     if (_ensureInitialized()) {
       await _analytics!.logEvent(
         name: 'subscription_started',
-        parameters: parameters,
+        parameters: parameters.cast<String, Object>(),
       );
     } else {
       _queueEvent('subscription_started', parameters);
@@ -269,7 +269,7 @@ class FirebaseAnalyticsService {
     if (_ensureInitialized()) {
       await _analytics!.logEvent(
         name: 'subscription_renewed',
-        parameters: parameters,
+        parameters: parameters.cast<String, Object>(),
       );
     } else {
       _queueEvent('subscription_renewed', parameters);
@@ -295,6 +295,31 @@ class FirebaseAnalyticsService {
     }
   }
 
+  /// Generic log event method for custom events
+  Future<void> logEvent({
+    required String name,
+    Map<String, Object?>? parameters,
+  }) async {
+    final params = parameters ?? {};
+    
+    debugPrint('[Analytics] logEvent called: $name with params: $params');
+    
+    if (_ensureInitialized()) {
+      try {
+        await _analytics!.logEvent(
+          name: name,
+          parameters: params.cast<String, Object>(),
+        );
+        debugPrint('[Analytics] Event sent successfully: $name');
+      } catch (e) {
+        debugPrint('[Analytics] Failed to send event $name: $e');
+      }
+    } else {
+      debugPrint('[Analytics] Analytics not initialized, queuing event: $name');
+      _queueEvent(name, params);
+    }
+  }
+
   /// Set user property
   Future<void> setUserProperty(String name, String? value) async {
     if (_ensureInitialized()) {
@@ -306,7 +331,7 @@ class FirebaseAnalyticsService {
   /// Set user ID for analytics
   Future<void> setUserId(String? id) async {
     if (_ensureInitialized()) {
-      await _analytics!.setUserId(id);
+      await _analytics!.setUserId(id: id);
     }
     // User ID is not queued as it is stateful
   }
@@ -315,7 +340,7 @@ class FirebaseAnalyticsService {
   /// Call this to verify Crashlytics is receiving crashes
   Future<void> testCrash() async {
     try {
-      await FirebaseCrashlytics.instance.crash();
+      FirebaseCrashlytics.instance.crash();
     } catch (e) {
       // This should never be reached as crash() terminates the app
       rethrow;
