@@ -136,13 +136,20 @@ class _StoryViewScreenState extends State<StoryViewScreen>
     // Fixed gap between header and card
     const dynamicGap = 24.0;
     
+    debugPrint('[StoryViewScreen] build() called - footerHeight: $footerHeight');
+    
     // Schedule header measurement after layout
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureHeader());
     
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
-      bottomNavigationBar: StoryOutputBannerAd(footerLinks: const _FooterLinks()),
+      bottomNavigationBar: Builder(
+        builder: (context) {
+          debugPrint('[StoryViewScreen] Building StoryOutputBannerAd as bottomNavigationBar');
+          return StoryOutputBannerAd(footerLinks: const _FooterLinks());
+        },
+      ),
       body: DreamyBackground(
         child: Stack(
           children: [

@@ -1,18 +1,34 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'admob_config.dart';
+import 'consent_service.dart';
 
 class AdService {
   static bool _isInitialized = false;
   static InterstitialAd? _interstitialAd;
   static bool _isInterstitialAdReady = false;
+  static bool _isConsentReady = false;
 
   /// Initialize AdMob SDK
   static Future<void> initialize() async {
     if (_isInitialized || kIsWeb) return;
+    
+    // Wait for consent to be ready before initializing ads
+    await ConsentService.initialize();
+    _isConsentReady = true;
+    
     await MobileAds.instance.initialize();
     _isInitialized = true;
     
+  }
+
+  /// Get AdRequest with consent status
+  static AdRequest _getAdRequest() {
+    // Google's UMP SDK handles personalized vs non-personalized ads internally
+    // based on user consent. We only need to check if ads can be requested.
+    // The UMP SDK automatically applies the correct ad type based on consent.
+    debugPrint('[AdService] Requesting ads (UMP SDK handles consent-based personalization)');
+    return const AdRequest();
   }
 
   /// Create a banner ad for Screen 1
@@ -24,18 +40,33 @@ class AdService {
       onFailed(LoadAdError(1, 'web', 'Web platform not supported', null));
       return null;
     }
-    return BannerAd(
+    
+    // Check consent before creating ad
+    if (!ConsentService.canRequestAds) {
+      debugPrint('[AdService] Cannot request ads - consent not granted');
+      onFailed(LoadAdError(1, 'consent', 'Consent not granted for ads', null));
+      return null;
+    }
+    
+    debugPrint('[AdService] Creating BannerAd for Screen 1');
+    final bannerAd = BannerAd(
       adUnitId: AdMobConfig.bannerAdIdScreen1,
       size: AdSize.banner,
-      request: const AdRequest(),
+      request: _getAdRequest(),
       listener: BannerAdListener(
-        onAdLoaded: (ad) => onLoaded(),
+        onAdLoaded: (ad) {
+          debugPrint('[AdService] BannerAd onAdLoaded fired for Screen 1');
+          onLoaded();
+        },
         onAdFailedToLoad: (ad, error) {
+          debugPrint('[AdService] BannerAd onAdFailedToLoad fired for Screen 1: ${error.message}');
           ad.dispose();
           onFailed(error);
         },
       ),
     );
+    debugPrint('[AdService] BannerAd object created for Screen 1');
+    return bannerAd;
   }
 
   /// Create a banner ad for Screen 2
@@ -47,18 +78,33 @@ class AdService {
       onFailed(LoadAdError(1, 'web', 'Web platform not supported', null));
       return null;
     }
-    return BannerAd(
+    
+    // Check consent before creating ad
+    if (!ConsentService.canRequestAds) {
+      debugPrint('[AdService] Cannot request ads - consent not granted');
+      onFailed(LoadAdError(1, 'consent', 'Consent not granted for ads', null));
+      return null;
+    }
+    
+    debugPrint('[AdService] Creating BannerAd for Screen 2');
+    final bannerAd = BannerAd(
       adUnitId: AdMobConfig.bannerAdIdScreen2,
       size: AdSize.banner,
-      request: const AdRequest(),
+      request: _getAdRequest(),
       listener: BannerAdListener(
-        onAdLoaded: (ad) => onLoaded(),
+        onAdLoaded: (ad) {
+          debugPrint('[AdService] BannerAd onAdLoaded fired for Screen 2');
+          onLoaded();
+        },
         onAdFailedToLoad: (ad, error) {
+          debugPrint('[AdService] BannerAd onAdFailedToLoad fired for Screen 2: ${error.message}');
           ad.dispose();
           onFailed(error);
         },
       ),
     );
+    debugPrint('[AdService] BannerAd object created for Screen 2');
+    return bannerAd;
   }
 
   /// Legacy method for backwards compatibility - uses Screen 1 banner
@@ -75,12 +121,19 @@ class AdService {
   /// Load the interstitial ad (call this ahead of time)
   static void loadInterstitialAd() {
     if (kIsWeb) return;
+    
+    // Check consent before loading ad
+    if (!ConsentService.canRequestAds) {
+      debugPrint('[AdService] Cannot load interstitial ad - consent not granted');
+      return;
+    }
+    
     // Don't load if already loading or ready
     if (_isInterstitialAdReady && _interstitialAd != null) return;
     
     InterstitialAd.load(
       adUnitId: AdMobConfig.interstitialAdIdAfterStory,
-      request: const AdRequest(),
+      request: _getAdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
           _interstitialAd = ad;

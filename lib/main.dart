@@ -9,6 +9,8 @@ import 'dart:ui';
 import 'theme/theme.dart';
 import 'screens/story_generator_screen.dart';
 import 'services/ad_service.dart';
+import 'services/ads_ready_service.dart';
+import 'services/consent_service.dart';
 import 'services/font_size_provider.dart';
 import 'services/firebase_analytics_service.dart';
 import 'firebase_options.dart';
@@ -72,12 +74,23 @@ void _initializeServices() {
       await FirebaseCrashlytics.instance.setCustomKey('subscription_tier', 'free');
       await FirebaseCrashlytics.instance.setCustomKey('current_screen', 'story_generator');
 
+      // Initialize UMP consent and AdService in background
+      await ConsentService.initialize().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('ConsentService init timed out (continuing safely)');
+        },
+      );
+
       await AdService.initialize().timeout(
         const Duration(seconds: 5),
         onTimeout: () {
           debugPrint('AdService init timed out (continuing safely)');
         },
       );
+
+      // Mark ads as ready so banner widgets can be created
+      AdsReadyService.markReady();
     } catch (e) {
       debugPrint('Service init failed: $e');
     }

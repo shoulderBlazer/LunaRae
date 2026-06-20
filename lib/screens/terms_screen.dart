@@ -52,13 +52,20 @@ class _TermsScreenState extends State<TermsScreen> {
     // Fixed gap between header and card
     const dynamicGap = 24.0;
     
+    debugPrint('[TermsScreen] build() called - footerHeight: $footerHeight');
+    
     // Schedule header measurement after layout
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureHeader());
     
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
-      bottomNavigationBar: StoryOutputBannerAd(footerLinks: const _FooterLinks()),
+      bottomNavigationBar: Builder(
+        builder: (context) {
+          debugPrint('[TermsScreen] Building StoryOutputBannerAd as bottomNavigationBar');
+          return StoryOutputBannerAd(footerLinks: const _FooterLinks());
+        },
+      ),
       body: DreamyBackground(
         child: Stack(
           children: [

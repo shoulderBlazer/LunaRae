@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../services/ad_service.dart';
+import '../services/ads_ready_service.dart';
 import '../theme/theme.dart';
 
 /// Dreamy styled banner ad widget with rounded container and "Advertisement" label
@@ -15,45 +16,86 @@ class BannerAdWidget extends StatefulWidget {
 class _BannerAdWidgetState extends State<BannerAdWidget> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  bool _isLoadingAd = false;
 
   @override
   void initState() {
     super.initState();
-    // Load ad after the screen renders to avoid blocking UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadAd();
-    });
-  }
-
-  void _loadAd() {
-    _bannerAd = AdService.createBannerAdScreen1(
-      onLoaded: () {
-        if (mounted) {
-          setState(() => _isAdLoaded = true);
-        }
-      },
-      onFailed: (error) {
-        // Fail silently - just log for debugging
-        debugPrint('Banner ad failed to load: ${error.message}');
-      },
-    );
-    _bannerAd?.load();
+    // Listen for ads ready signal
+    AdsReadyService.addListener(_onAdsReady);
+    
+    // Load ad immediately if ads are already ready
+    if (AdsReadyService.isReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadAd();
+      });
+    }
   }
 
   @override
   void dispose() {
     _bannerAd?.dispose();
+    AdsReadyService.removeListener(_onAdsReady);
     super.dispose();
+  }
+
+  void _onAdsReady() {
+    debugPrint('[BannerAdWidget] Ads ready signal received');
+    if (mounted) {
+      _loadAd();
+    }
+  }
+
+  Future<void> _loadAd() async {
+    debugPrint('[BannerAdWidget] _loadAd called');
+    
+    // Guard against multiple banner loads
+    if (_isLoadingAd || _bannerAd != null) {
+      debugPrint('[BannerAdWidget] Skipping _loadAd - _isLoadingAd: $_isLoadingAd, _bannerAd: ${_bannerAd != null}');
+      return;
+    }
+
+    _isLoadingAd = true;
+
+    try {
+      debugPrint('[BannerAdWidget] Calling AdService.createBannerAdScreen1()');
+      _bannerAd = AdService.createBannerAdScreen1(
+        onLoaded: () {
+          debugPrint('[BannerAdWidget] onLoaded callback fired');
+          if (mounted) {
+            debugPrint('[BannerAdWidget] Calling setState to set _isAdLoaded = true');
+            setState(() => _isAdLoaded = true);
+          }
+        },
+        onFailed: (error) {
+          // Fail silently - just log for debugging
+          debugPrint('[BannerAdWidget] Banner ad failed to load: ${error.message}');
+        },
+      );
+      debugPrint('[BannerAdWidget] _bannerAd assigned: ${_bannerAd != null}');
+      if (_bannerAd != null) {
+        debugPrint('[BannerAdWidget] Calling banner.load()');
+        _bannerAd?.load();
+      } else {
+        debugPrint('[BannerAdWidget] _bannerAd is null, skipping load()');
+      }
+    } finally {
+      _isLoadingAd = false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[BannerAdWidget] build() called - _isAdLoaded: $_isAdLoaded, _bannerAd: ${_bannerAd != null}');
+    
     if (!_isAdLoaded || _bannerAd == null) {
+      debugPrint('[BannerAdWidget] Returning SizedBox.shrink() (ad not loaded)');
       return const SizedBox.shrink();
     }
 
     final isDark = LunaTheme.isDarkMode(context);
 
+    debugPrint('[BannerAdWidget] Building AdWidget');
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
@@ -93,6 +135,7 @@ class BannerAdWithFooter extends StatefulWidget {
 class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  bool _isLoadingAd = false;
   
   // Fixed height to prevent layout shift - standard banner is 50px
   static const double _reservedAdHeight = 50.0;
@@ -118,33 +161,69 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
   @override
   void initState() {
     super.initState();
-    // Load ad after the screen renders to avoid blocking UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadAd();
-    });
-  }
-
-  void _loadAd() {
-    // Use Screen 1 banner ID via AdMobConfig
-    _bannerAd = AdService.createBannerAdScreen1(
-      onLoaded: () {
-        if (mounted) {
-          setState(() => _isAdLoaded = true);
-        }
-      },
-      onFailed: (error) {
-        // Fail silently - just log for debugging, no user-facing error
-        debugPrint('Banner ad failed to load: ${error.message}');
-        // Keep reserved space to prevent layout shift
-      },
-    );
-    _bannerAd?.load();
+    // Listen for ads ready signal
+    AdsReadyService.addListener(_onAdsReady);
+    
+    // Load ad immediately if ads are already ready
+    if (AdsReadyService.isReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadAd();
+      });
+    }
   }
 
   @override
   void dispose() {
     _bannerAd?.dispose();
+    AdsReadyService.removeListener(_onAdsReady);
     super.dispose();
+  }
+
+  void _onAdsReady() {
+    debugPrint('[BannerAdWithFooter] Ads ready signal received');
+    if (mounted) {
+      _loadAd();
+    }
+  }
+
+  Future<void> _loadAd() async {
+    debugPrint('[BannerAdWithFooter] _loadAd called');
+    
+    // Guard against multiple banner loads
+    if (_isLoadingAd || _bannerAd != null) {
+      debugPrint('[BannerAdWithFooter] Skipping _loadAd - _isLoadingAd: $_isLoadingAd, _bannerAd: ${_bannerAd != null}');
+      return;
+    }
+
+    _isLoadingAd = true;
+
+    try {
+      debugPrint('[BannerAdWithFooter] Calling AdService.createBannerAdScreen1()');
+      // Use Screen 1 banner ID via AdMobConfig
+      _bannerAd = AdService.createBannerAdScreen1(
+        onLoaded: () {
+          debugPrint('[BannerAdWithFooter] onLoaded callback fired');
+          if (mounted) {
+            debugPrint('[BannerAdWithFooter] Calling setState to set _isAdLoaded = true');
+            setState(() => _isAdLoaded = true);
+          }
+        },
+        onFailed: (error) {
+          // Fail silently - just log for debugging, no user-facing error
+          debugPrint('[BannerAdWithFooter] Banner ad failed to load: ${error.message}');
+          // Keep reserved space to prevent layout shift
+        },
+      );
+      debugPrint('[BannerAdWithFooter] _bannerAd assigned: ${_bannerAd != null}');
+      if (_bannerAd != null) {
+        debugPrint('[BannerAdWithFooter] Calling banner.load()');
+        _bannerAd?.load();
+      } else {
+        debugPrint('[BannerAdWithFooter] _bannerAd is null, skipping load()');
+      }
+    } finally {
+      _isLoadingAd = false;
+    }
   }
 
   @override
@@ -195,36 +274,73 @@ class InlineBannerAdWidget extends StatefulWidget {
 class _InlineBannerAdWidgetState extends State<InlineBannerAdWidget> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  bool _isLoadingAd = false;
 
   @override
   void initState() {
     super.initState();
-    // Load ad after the screen renders to avoid blocking UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadAd();
-    });
-  }
-
-  void _loadAd() {
-    // Use Screen 2 banner ID for inline/secondary placement
-    _bannerAd = AdService.createBannerAdScreen2(
-      onLoaded: () {
-        if (mounted) {
-          setState(() => _isAdLoaded = true);
-        }
-      },
-      onFailed: (error) {
-        // Fail silently - just log for debugging
-        debugPrint('Banner ad failed to load: ${error.message}');
-      },
-    );
-    _bannerAd?.load();
+    // Listen for ads ready signal
+    AdsReadyService.addListener(_onAdsReady);
+    
+    // Load ad immediately if ads are already ready
+    if (AdsReadyService.isReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadAd();
+      });
+    }
   }
 
   @override
   void dispose() {
     _bannerAd?.dispose();
+    AdsReadyService.removeListener(_onAdsReady);
     super.dispose();
+  }
+
+  void _onAdsReady() {
+    debugPrint('[InlineBannerAdWidget] Ads ready signal received');
+    if (mounted) {
+      _loadAd();
+    }
+  }
+
+  Future<void> _loadAd() async {
+    debugPrint('[InlineBannerAdWidget] _loadAd called');
+    
+    // Guard against multiple banner loads
+    if (_isLoadingAd || _bannerAd != null) {
+      debugPrint('[InlineBannerAdWidget] Skipping _loadAd - _isLoadingAd: $_isLoadingAd, _bannerAd: ${_bannerAd != null}');
+      return;
+    }
+
+    _isLoadingAd = true;
+
+    try {
+      debugPrint('[InlineBannerAdWidget] Calling AdService.createBannerAdScreen2()');
+      // Use Screen 2 banner ID for inline/secondary placement
+      _bannerAd = AdService.createBannerAdScreen2(
+        onLoaded: () {
+          debugPrint('[InlineBannerAdWidget] onLoaded callback fired');
+          if (mounted) {
+            debugPrint('[InlineBannerAdWidget] Calling setState to set _isAdLoaded = true');
+            setState(() => _isAdLoaded = true);
+          }
+        },
+        onFailed: (error) {
+          // Fail silently - just log for debugging
+          debugPrint('[InlineBannerAdWidget] Banner ad failed to load: ${error.message}');
+        },
+      );
+      debugPrint('[InlineBannerAdWidget] _bannerAd assigned: ${_bannerAd != null}');
+      if (_bannerAd != null) {
+        debugPrint('[InlineBannerAdWidget] Calling banner.load()');
+        _bannerAd?.load();
+      } else {
+        debugPrint('[InlineBannerAdWidget] _bannerAd is null, skipping load()');
+      }
+    } finally {
+      _isLoadingAd = false;
+    }
   }
 
   @override
@@ -290,6 +406,7 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
     with SingleTickerProviderStateMixin {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  bool _isLoadingAd = false;
   
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -334,37 +451,76 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
       curve: Curves.easeOut,
     );
     
-    // Load ad after the screen renders to avoid blocking UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadAd();
-    });
-  }
-
-  void _loadAd() {
-    // Use Screen 2 banner ID for Story Output screen
-    _bannerAd = AdService.createBannerAdScreen2(
-      onLoaded: () {
-        if (mounted) {
-          setState(() => _isAdLoaded = true);
-        }
-      },
-      onFailed: (error) {
-        // Fail silently - just log for debugging, no user-facing error
-        debugPrint('Story output banner ad failed to load: ${error.message}');
-      },
-    );
-    _bannerAd?.load();
+    // Listen for ads ready signal
+    AdsReadyService.addListener(_onAdsReady);
+    
+    // Load ad immediately if ads are already ready
+    if (AdsReadyService.isReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadAd();
+      });
+    }
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
     _bannerAd?.dispose();
+    AdsReadyService.removeListener(_onAdsReady);
     super.dispose();
+  }
+
+  void _onAdsReady() {
+    debugPrint('[StoryOutputBannerAd] Ads ready signal received');
+    if (mounted) {
+      _loadAd();
+    }
+  }
+
+  Future<void> _loadAd() async {
+    debugPrint('[StoryOutputBannerAd] _loadAd called');
+    
+    // Guard against multiple banner loads
+    if (_isLoadingAd || _bannerAd != null) {
+      debugPrint('[StoryOutputBannerAd] Skipping _loadAd - _isLoadingAd: $_isLoadingAd, _bannerAd: ${_bannerAd != null}');
+      return;
+    }
+
+    _isLoadingAd = true;
+
+    try {
+      debugPrint('[StoryOutputBannerAd] Calling AdService.createBannerAdScreen2()');
+      // Use Screen 2 banner ID for Story Output screen
+      _bannerAd = AdService.createBannerAdScreen2(
+        onLoaded: () {
+          debugPrint('[StoryOutputBannerAd] onLoaded callback fired');
+          if (mounted) {
+            debugPrint('[StoryOutputBannerAd] Calling setState to set _isAdLoaded = true');
+            setState(() => _isAdLoaded = true);
+            // Start fade-in animation when ad loads
+            _fadeController.forward();
+          }
+        },
+        onFailed: (error) {
+          // Fail silently - just log for debugging, no user-facing error
+          debugPrint('[StoryOutputBannerAd] Banner ad failed to load: ${error.message}');
+        },
+      );
+      debugPrint('[StoryOutputBannerAd] _bannerAd assigned: ${_bannerAd != null}');
+      if (_bannerAd != null) {
+        debugPrint('[StoryOutputBannerAd] Calling banner.load()');
+        _bannerAd?.load();
+      } else {
+        debugPrint('[StoryOutputBannerAd] _bannerAd is null, skipping load()');
+      }
+    } finally {
+      _isLoadingAd = false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[StoryOutputBannerAd] build() called - _isAdLoaded: $_isAdLoaded, _bannerAd: ${_bannerAd != null}, mounted: $mounted');
     final isDark = LunaTheme.isDarkMode(context);
 
     return ClipRect(
@@ -404,9 +560,21 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
                   child: _isAdLoaded && _bannerAd != null
                       ? FadeTransition(
                           opacity: _fadeAnimation,
-                          child: Center(child: AdWidget(ad: _bannerAd!)),
+                          child: Center(
+                            child: Builder(
+                              builder: (context) {
+                                debugPrint('[StoryOutputBannerAd] Building AdWidget with BannerAd');
+                                return AdWidget(ad: _bannerAd!);
+                              },
+                            ),
+                          ),
                         )
-                      : const SizedBox.shrink(), // Empty placeholder, same height
+                      : Builder(
+                          builder: (context) {
+                            debugPrint('[StoryOutputBannerAd] Returning SizedBox.shrink() - _isAdLoaded: $_isAdLoaded, _bannerAd: ${_bannerAd != null}');
+                            return const SizedBox.shrink(); // Empty placeholder, same height
+                          },
+                        ),
                 ),
               ],
             ),
