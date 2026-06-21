@@ -16,6 +16,7 @@ import '../config/api_keys.dart';
 import '../widgets/banner_ad_widget.dart' show BannerAdWithFooter;
 import '../widgets/dreamy_widgets.dart' show DreamyBackground, DreamyCard, DreamyInput, DreamyPrimaryButton, DreamySecondaryButton, MoonLoadingIndicator, DreamyPageRoute;
 import '../widgets/frosted_header.dart';
+import '../services/story_ad_manager.dart';
 
 class StoryGeneratorScreen extends StatefulWidget {
   const StoryGeneratorScreen({super.key});
@@ -81,6 +82,7 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
   }
 
   Future<void> _generateStory() async {
+    debugPrint('[StoryGenerator] Generate button pressed');
     FocusScope.of(context).unfocus();
 
     if (promptController.text.trim().isEmpty) return;
@@ -91,6 +93,27 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
       _storyService = StoryService(ApiKeys.openAiKey);
     }
 
+    // Check if we should show an interstitial during generation
+    final shouldShowAd = StoryAdManager.shouldShowGenerationInterstitial();
+
+    if (shouldShowAd) {
+      debugPrint('[StoryGenerator] Showing generation interstitial');
+      // Show interstitial ad before generating story
+      await StoryAdManager.showGenerationInterstitial(
+        onAdComplete: () {
+          debugPrint('[StoryGenerator] Continuing story generation');
+          // After ad is dismissed, proceed with story generation
+          _performStoryGeneration();
+        },
+      );
+    } else {
+      debugPrint('[StoryGenerator] Skipping generation interstitial');
+      // Generate story normally without ad
+      _performStoryGeneration();
+    }
+  }
+
+  Future<void> _performStoryGeneration() async {
     try {
       final story = await _storyService!.generateStory(promptController.text.trim());
       

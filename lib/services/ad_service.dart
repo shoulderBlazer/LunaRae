@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'admob_config.dart';
 import 'consent_service.dart';
+import 'story_ad_manager.dart';
 
 class AdService {
   static bool _isInitialized = false;
@@ -120,7 +121,13 @@ class AdService {
 
   /// Load the interstitial ad (call this ahead of time)
   static void loadInterstitialAd() {
-    if (kIsWeb) return;
+    debugPrint('[AdService] loadInterstitialAd called');
+    debugPrint('[AdService] Interstitial available: $_interstitialAd != null');
+    
+    if (kIsWeb) {
+      debugPrint('[AdService] Web platform, skipping interstitial load');
+      return;
+    }
     
     // Check consent before loading ad
     if (!ConsentService.canRequestAds) {
@@ -129,8 +136,12 @@ class AdService {
     }
     
     // Don't load if already loading or ready
-    if (_isInterstitialAdReady && _interstitialAd != null) return;
+    if (_isInterstitialAdReady && _interstitialAd != null) {
+      debugPrint('[AdService] Interstitial already loaded and ready, skipping load');
+      return;
+    }
     
+    debugPrint('[AdService] Loading interstitial ad...');
     InterstitialAd.load(
       adUnitId: AdMobConfig.interstitialAdIdAfterStory,
       request: _getAdRequest(),
@@ -138,27 +149,32 @@ class AdService {
         onAdLoaded: (ad) {
           _interstitialAd = ad;
           _isInterstitialAdReady = true;
-          debugPrint('Interstitial ad loaded successfully');
+          debugPrint('[AdService] Interstitial loaded');
           
           ad.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
-              debugPrint('Interstitial ad dismissed');
+              debugPrint('[AdService] Interstitial dismissed');
               ad.dispose();
+              debugPrint('[AdService] Interstitial disposed');
               _isInterstitialAdReady = false;
               _interstitialAd = null;
+              debugPrint('[AdService] Interstitial available: $_interstitialAd != null');
               
               // Invoke callback after ad is dismissed
               _onInterstitialDismissed?.call();
               _onInterstitialDismissed = null;
               
               // Pre-load the next interstitial for future use
+              debugPrint('[AdService] Preloading next interstitial');
               loadInterstitialAd();
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
-              debugPrint('Interstitial ad failed to show: ${error.message}');
+              debugPrint('[AdService] Interstitial failed to show: ${error.message}');
               ad.dispose();
+              debugPrint('[AdService] Interstitial disposed');
               _isInterstitialAdReady = false;
               _interstitialAd = null;
+              debugPrint('[AdService] Interstitial available: $_interstitialAd != null');
               
               // Still invoke callback so user can continue
               _onInterstitialDismissed?.call();
@@ -167,9 +183,10 @@ class AdService {
           );
         },
         onAdFailedToLoad: (error) {
-          debugPrint('Interstitial ad failed to load: ${error.message}');
+          debugPrint('[AdService] Interstitial failed to load: ${error.message}');
           _isInterstitialAdReady = false;
           _interstitialAd = null;
+          debugPrint('[AdService] Interstitial available: $_interstitialAd != null');
         },
       ),
     );
@@ -179,16 +196,23 @@ class AdService {
   /// [onDismissed] is called after the ad closes (or immediately if ad not ready)
   /// Returns true if ad was shown, false if user should continue immediately
   static bool showInterstitialAdAfterStory({VoidCallback? onDismissed}) {
+    debugPrint('[AdService] showInterstitialAdAfterStory called');
+    debugPrint('[AdService] Interstitial available: $_interstitialAd != null');
+    debugPrint('[AdService] Interstitial ready: $_isInterstitialAdReady');
+    
     if (kIsWeb) {
+      debugPrint('[AdService] Web platform, skipping interstitial show');
       onDismissed?.call();
       return false;
     }
+    
     if (_isInterstitialAdReady && _interstitialAd != null) {
       _onInterstitialDismissed = onDismissed;
+      debugPrint('[AdService] Interstitial shown');
       _interstitialAd!.show();
       return true;
     } else {
-      debugPrint('Interstitial ad not ready, allowing user to continue');
+      debugPrint('[AdService] Interstitial not ready, allowing user to continue');
       // Ad not ready - invoke callback immediately so user can continue
       onDismissed?.call();
       // Load for next time
