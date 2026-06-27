@@ -22,11 +22,7 @@ workflows:
 
       - name: Build Android App Bundle
         script: |
-          flutter build appbundle \
-            --release \
-            --flavor android-production \
-            -t lib/main.dart \
-            --dart-define=OPENAI_API_KEY=$OPENAI_API_KEY
+          flutter build appbundle --release -t lib/main.dart
 
       - name: Build iOS IPA
         script: |
