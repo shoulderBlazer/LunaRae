@@ -16,6 +16,7 @@ workflows:
         - app_store_credentials
         - google_play
         - keystore_credentials
+        - secrets
 
     scripts:
       - name: Get Flutter packages
