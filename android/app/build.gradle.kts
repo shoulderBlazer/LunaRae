@@ -31,7 +31,7 @@ android {
         versionName = flutter.versionName
     }
 
-        signingConfigs {
+    signingConfigs {
         create("release") {
             // Check for Codemagic's default UI variables first
             val cmKeystorePath = System.getenv("CM_KEYSTORE_PATH")
