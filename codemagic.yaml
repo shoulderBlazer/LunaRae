@@ -13,9 +13,6 @@ workflows:
         XCODE_SCHEME: Runner
 
       groups:
-        - app_store_credentials
-        - google_play
-        - keystore_credentials
         - secrets
 
     scripts:
