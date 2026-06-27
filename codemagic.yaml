@@ -1,0 +1,46 @@
+workflows:
+  lunarae:
+    name: LunaRae
+
+    environment:
+      flutter: stable
+      xcode: 16.4
+
+      vars:
+        FLUTTER_TARGET: lib/main.dart
+
+      groups:
+        - app_store_credentials
+        - google_play
+        - keystore_credentials
+
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+
+      - name: Build Android App Bundle
+        script: |
+          flutter build appbundle \
+            --release \
+            --flavor android-production \
+            -t lib/main.dart \
+            --dart-define=OPENAI_API_KEY=$OPENAI_API_KEY
+
+      - name: Build iOS IPA
+        script: |
+          flutter build ipa \
+            --release \
+            --dart-define=OPENAI_API_KEY=$OPENAI_API_KEY
+
+    artifacts:
+      - build/**/outputs/**/*.aab
+      - build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        auth: integration
+
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
