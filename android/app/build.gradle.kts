@@ -33,14 +33,9 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystorePath = System.getenv("CM_KEYSTORE_PATH")
-            if (keystorePath != null) {
+            val keystorePath = System.getenv("KEYSTORE_PATH")
+            if (keystorePath != null && keystorePath.isNotEmpty()) {
                 storeFile = file(keystorePath)
-                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("CM_KEY_ALIAS")
-                keyPassword = System.getenv("CM_KEY_PASSWORD")
-            } else {
-                storeFile = file("my-release-key.jks")
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
@@ -53,7 +48,7 @@ android {
             applicationIdSuffix = ".debug"
         }
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
         }
