@@ -1,0 +1,35 @@
+workflows:
+  default-workflow:
+    name: Default Workflow
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: 16.4
+      cocoapods: default
+      vars:
+        OPENAI_API_KEY: "secure_key"
+    triggering:
+      events:
+        - push
+      branches:
+        - main
+    scripts:
+      - name: Configure Java Runtime Environment
+        script: |
+          jenv global 17
+          export JAVA_HOME=$(jenv prefix)
+          java -version
+      - name: Fetch Flutter Dependencies
+        script: |
+          flutter pub get
+      - name: Execute Manual Android Build Compilation
+        script: |
+          flutter build appbundle --release --dart-define=OPENAI_API_KEY=$OPENAI_API_KEY
+      - name: Execute Manual iOS Build Compilation
+        script: |
+          # Using "build ipa" with an explicit workspace definition avoids auto-scanning failures
+          flutter build ipa --release --no-codesign --dart-define=OPENAI_API_KEY=$OPENAI_API_KEY
+    artifacts:
+      - build/app/outputs/bundle/release/*.aab
+      - build/ios/ipa/*.ipa
