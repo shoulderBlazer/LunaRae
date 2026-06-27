@@ -39,14 +39,3 @@ workflows:
     artifacts:
       - build/**/outputs/**/*.aab
       - build/ios/ipa/*.ipa
-
-    publishing:
-      app_store_connect:
-        api_key:
-          key_id: $APP_STORE_CONNECT_KEY_ID
-          issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-          private_key: $APP_STORE_CONNECT_PRIVATE_KEY
-
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        track: internal
