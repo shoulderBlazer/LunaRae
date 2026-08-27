@@ -6,7 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../theme/theme.dart';
 import '../services/subscription_service.dart';
 import '../services/font_size_provider.dart';
-import '../widgets/dreamy_widgets.dart' show DreamyBackground, DreamyPrimaryButton, MoonLoadingIndicator;
+import '../widgets/dreamy_widgets.dart'
+    show DreamyBackground, DreamyPrimaryButton, MoonLoadingIndicator;
 import '../widgets/frosted_header.dart';
 
 class SubscriptionScreen extends StatefulWidget {
@@ -24,7 +25,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Listen to subscription changes
     SubscriptionService().addListener(_onSubscriptionChanged);
   }
@@ -42,63 +43,85 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _purchaseMonthly() async {
-    if (_isPurchasingMonthly) return;
-    
+    if (_isPurchasingMonthly || SubscriptionService().isPurchaseInProgress) {
+      return;
+    }
+
     setState(() => _isPurchasingMonthly = true);
-    
-    final success = await SubscriptionService().purchaseMonthly();
-    
+
+    final result = await SubscriptionService().purchaseMonthly();
+
     if (mounted) {
       setState(() => _isPurchasingMonthly = false);
-      
-      if (success) {
-        // Force refresh subscription status to ensure UI updates immediately
-        await SubscriptionService().refreshSubscriptionStatus();
-        _showSuccess('Successfully subscribed to monthly plan!');
-      } else {
-        _showError('Unable to complete purchase. Please try again.');
-      }
+
+      _showPurchaseResult(result, planName: 'monthly');
     }
   }
 
   Future<void> _purchaseYearly() async {
-    if (_isPurchasingYearly) return;
-    
+    if (_isPurchasingYearly || SubscriptionService().isPurchaseInProgress) {
+      return;
+    }
+
     setState(() => _isPurchasingYearly = true);
-    
-    final success = await SubscriptionService().purchaseYearly();
-    
+
+    final result = await SubscriptionService().purchaseYearly();
+
     if (mounted) {
       setState(() => _isPurchasingYearly = false);
-      
-      if (success) {
-        // Force refresh subscription status to ensure UI updates immediately
-        await SubscriptionService().refreshSubscriptionStatus();
-        _showSuccess('Successfully upgraded to yearly plan!');
-      } else {
-        _showError('Unable to complete purchase. Please try again.');
-      }
+
+      _showPurchaseResult(result, planName: 'yearly');
     }
   }
 
   Future<void> _restorePurchases() async {
     if (_isRestoring) return;
-    
+
     setState(() => _isRestoring = true);
-    
-    await SubscriptionService().restorePurchases();
-    
-    // Wait a moment for restore to complete
-    await Future.delayed(const Duration(seconds: 2));
-    
+
+    final result = await SubscriptionService().restorePurchases();
+
     if (mounted) {
       setState(() => _isRestoring = false);
-      
-      if (SubscriptionService().isSubscribed) {
+
+      if (result == SubscriptionActionResult.success &&
+          SubscriptionService().isSubscribed) {
         _showSuccess('Your subscription has been restored!');
-      } else {
+      } else if (result == SubscriptionActionResult.noActiveSubscription) {
         _showError('No active subscription found.');
+      } else {
+        _showError('Unable to restore purchases. Please try again.');
       }
+    }
+  }
+
+  void _showPurchaseResult(
+    SubscriptionActionResult result, {
+    required String planName,
+  }) {
+    switch (result) {
+      case SubscriptionActionResult.success:
+        _showSuccess(
+          planName == 'yearly'
+              ? 'Successfully upgraded to yearly plan!'
+              : 'Successfully subscribed to monthly plan!',
+        );
+        return;
+      case SubscriptionActionResult.canceled:
+        _showError('Purchase cancelled.');
+        return;
+      case SubscriptionActionResult.timedOut:
+        _showError(
+          'Purchase is still pending. Check your App Store account and try again shortly.',
+        );
+        return;
+      case SubscriptionActionResult.unavailable:
+        _showError('Subscriptions are currently unavailable.');
+        return;
+      case SubscriptionActionResult.error:
+      case SubscriptionActionResult.noActiveSubscription:
+        _showError('Unable to complete purchase. Please try again.');
+        return;
     }
   }
 
@@ -108,9 +131,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         content: Text(message),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -121,9 +142,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         content: Text(message),
         backgroundColor: LunaTheme.primary(context),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -141,13 +160,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget build(BuildContext context) {
     final fontSizeProvider = context.watch<FontSizeProvider>();
     final subscriptionService = SubscriptionService();
-    
+
     // Only show on iOS
     if (!Platform.isIOS) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Story Weaver Premium'),
-        ),
+        appBar: AppBar(title: const Text('Story Weaver Premium')),
         body: const Center(
           child: Text('Subscriptions are only available on iOS'),
         ),
@@ -165,7 +182,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             SafeArea(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 80,
+                  ),
                   child: Column(
                     children: [
                       // Logo
@@ -173,9 +193,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         'assets/images/lunarae_logo_1024x1024.png',
                         height: 120,
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       // Title
                       Text(
                         "LunaRae's Subscriptions",
@@ -185,23 +205,26 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      
+
                       const SizedBox(height: 8),
-                      
+
                       // Subtitle
                       Text(
                         'More stories. More calm. More imagination.',
                         style: LunaTheme.body(context).copyWith(
                           fontSize: 16 * fontSizeProvider.scaleFactor,
-                          color: LunaTheme.textPrimary(context).withValues(alpha: 0.8),
+                          color: LunaTheme.textPrimary(
+                            context,
+                          ).withValues(alpha: 0.8),
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      
+
                       const SizedBox(height: 20),
-                      
+
                       // Loading indicator
-                      if (_isLoadingProducts)
+                      if (!subscriptionService.productsLoaded &&
+                          !subscriptionService.isInitialized)
                         const Center(
                           child: Padding(
                             padding: EdgeInsets.all(32.0),
@@ -212,41 +235,41 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             ),
                           ),
                         ),
-                      
+
                       // Subscribed users - Current Plan card (shown above subscription options)
                       if (subscriptionService.isSubscribed) ...[
                         _CurrentPlanCard(
-                          subscriptionName: subscriptionService.currentSubscriptionName,
+                          subscriptionName:
+                              subscriptionService.currentSubscriptionName,
                           fontSizeProvider: fontSizeProvider,
                           onManageSubscription: _manageSubscription,
                         ),
-                        
+
                         // Placeholder for future Story Library upgrade card
                         // const SizedBox(height: 16),
                         // _StoryLibraryUpgradeCard(),
-                        
                         const SizedBox(height: 16),
                       ],
-                      
+
                       // Free plan users - Current Plan card
                       if (!subscriptionService.isSubscribed) ...[
-                        _FreePlanCard(
-                          fontSizeProvider: fontSizeProvider,
-                        ),
-                        
+                        _FreePlanCard(fontSizeProvider: fontSizeProvider),
+
                         const SizedBox(height: 16),
                       ],
-                      
+
                       // CHANGED: Show subscription options based on current subscription status
                       // - If subscribed to monthly: hide monthly card, show yearly card with "Upgrade" button
                       // - If subscribed to yearly: hide both cards (user is already on best plan)
                       // - If not subscribed: show both cards with "Subscribe" buttons
-                      
+
                       // Show monthly card only if not subscribed to any plan
                       if (!subscriptionService.isSubscribed) ...[
                         _SubscriptionOption(
                           title: 'Story Weaver Plan - Monthly',
-                          price: subscriptionService.monthlyProduct?.price ?? 'Loading...',
+                          price:
+                              subscriptionService.monthlyProduct?.price ??
+                              'Loading...',
                           description: 'Billed monthly',
                           onTap: _isPurchasingMonthly ? null : _purchaseMonthly,
                           isLoading: _isPurchasingMonthly,
@@ -267,14 +290,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       if (!subscriptionService.isSubscribedToYearly) ...[
                         _SubscriptionOption(
                           title: 'Story Weaver Plan - Yearly',
-                          price: subscriptionService.yearlyProduct?.price ?? 'Loading...',
+                          price:
+                              subscriptionService.yearlyProduct?.price ??
+                              'Loading...',
                           description: 'Best value - Save 20%',
                           onTap: _isPurchasingYearly ? null : _purchaseYearly,
                           isLoading: _isPurchasingYearly,
                           isPopular: true,
                           fontSizeProvider: fontSizeProvider,
-                          buttonText: subscriptionService.isSubscribedToMonthly ? 'Upgrade' : 'Subscribe',
-                          showBestValueBadge: subscriptionService.isSubscribedToMonthly, // Show gold badge when on monthly
+                          buttonText: subscriptionService.isSubscribedToMonthly
+                              ? 'Upgrade'
+                              : 'Subscribe',
+                          showBestValueBadge: subscriptionService
+                              .isSubscribedToMonthly, // Show gold badge when on monthly
                           features: [
                             '🌙 5 stories every day',
                             '🚫 No adverts',
@@ -282,24 +310,27 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ],
                         ),
                       ],
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       // Restore purchases button
                       _RestoreButton(
                         onTap: _isRestoring ? null : _restorePurchases,
                         isLoading: _isRestoring,
                         fontSizeProvider: fontSizeProvider,
                       ),
-                      
+
                       // Debug: Clear subscription button (only in debug mode)
                       if (kDebugMode) ...[
                         const SizedBox(height: 8),
                         TextButton(
                           onPressed: () async {
-                            await SubscriptionService().debugClearSubscription();
+                            await SubscriptionService()
+                                .debugClearSubscription();
                             if (mounted) {
-                              _showSuccess('Subscription state cleared (debug)');
+                              _showSuccess(
+                                'Subscription state cleared (debug)',
+                              );
                             }
                           },
                           child: Text(
@@ -314,7 +345,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           onPressed: () async {
                             await SubscriptionService().debugEnableRestore();
                             if (mounted) {
-                              _showSuccess('Subscription restore re-enabled (debug)');
+                              _showSuccess(
+                                'Subscription restore re-enabled (debug)',
+                              );
                             }
                           },
                           child: Text(
@@ -326,9 +359,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ),
                         ),
                       ],
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       // Terms text
                       Text(
                         'Subscription auto-renews unless cancelled. Cancel anytime in App Store.',
@@ -344,7 +377,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
               ),
             ),
-            
+
             // Frosted header
             const Positioned(
               top: 0,
@@ -380,11 +413,7 @@ class _CloseButton extends StatelessWidget {
             width: 1,
           ),
         ),
-        child: Icon(
-          Icons.close,
-          color: LunaTheme.primary(context),
-          size: 22,
-        ),
+        child: Icon(Icons.close, color: LunaTheme.primary(context), size: 22),
       ),
     );
   }
@@ -399,7 +428,8 @@ class _SubscriptionOption extends StatelessWidget {
   final bool isPopular;
   final FontSizeProvider fontSizeProvider;
   final String buttonText; // CHANGED: Added to allow custom button text
-  final bool showBestValueBadge; // CHANGED: Added to show gold 'Best Value' badge
+  final bool
+  showBestValueBadge; // CHANGED: Added to show gold 'Best Value' badge
   final List<String> features; // Added to show features
 
   const _SubscriptionOption({
@@ -418,7 +448,7 @@ class _SubscriptionOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = LunaTheme.isDarkMode(context);
-    
+
     return Container(
       decoration: BoxDecoration(
         color: isDark ? LunaTheme.darkCard : LunaTheme.lightCard,
@@ -444,7 +474,9 @@ class _SubscriptionOption extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 6),
               decoration: BoxDecoration(
-                color: showBestValueBadge ? const Color(0xFFFFD700) : LunaTheme.primary(context),
+                color: showBestValueBadge
+                    ? const Color(0xFFFFD700)
+                    : LunaTheme.primary(context),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(18),
                   topRight: Radius.circular(18),
@@ -453,8 +485,8 @@ class _SubscriptionOption extends StatelessWidget {
               child: Text(
                 showBestValueBadge ? 'BEST VALUE' : 'MOST POPULAR',
                 style: TextStyle(
-                  color: showBestValueBadge 
-                      ? Colors.black 
+                  color: showBestValueBadge
+                      ? Colors.black
                       : (isDark ? LunaTheme.darkCard : LunaTheme.lightCard),
                   fontSize: 11 * fontSizeProvider.scaleFactor,
                   fontWeight: FontWeight.bold,
@@ -518,15 +550,17 @@ class _SubscriptionOption extends StatelessWidget {
                 ),
                 if (features.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  ...features.map((feature) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      feature,
-                      style: LunaTheme.body(context).copyWith(
-                        fontSize: 14 * fontSizeProvider.scaleFactor,
+                  ...features.map(
+                    (feature) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        feature,
+                        style: LunaTheme.body(
+                          context,
+                        ).copyWith(fontSize: 14 * fontSizeProvider.scaleFactor),
                       ),
                     ),
-                  )),
+                  ),
                 ],
               ],
             ),
@@ -574,11 +608,7 @@ class _RestoreButton extends StatelessWidget {
                 ),
               )
             else
-              Icon(
-                Icons.restore,
-                color: LunaTheme.primary(context),
-                size: 18,
-              ),
+              Icon(Icons.restore, color: LunaTheme.primary(context), size: 18),
             const SizedBox(width: 8),
             Text(
               isLoading ? 'Restoring...' : 'Restore Purchases',
@@ -609,15 +639,12 @@ class _CurrentPlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = LunaTheme.isDarkMode(context);
-    
+
     return Container(
       decoration: BoxDecoration(
         color: isDark ? LunaTheme.darkCard : LunaTheme.lightCard,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LunaTheme.primary(context),
-          width: 2,
-        ),
+        border: Border.all(color: LunaTheme.primary(context), width: 2),
         boxShadow: [
           BoxShadow(
             color: LunaTheme.primary(context).withValues(alpha: 0.15),
@@ -641,11 +668,7 @@ class _CurrentPlanCard extends StatelessWidget {
                     color: Colors.green,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                  child: const Icon(Icons.check, color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -658,9 +681,9 @@ class _CurrentPlanCard extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Subscription name
             Text(
               subscriptionName,
@@ -669,9 +692,9 @@ class _CurrentPlanCard extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Benefits list
             _BenefitItem(
               icon: Icons.check_circle,
@@ -690,9 +713,9 @@ class _CurrentPlanCard extends StatelessWidget {
               text: '✨ More bedtime magic',
               fontSizeProvider: fontSizeProvider,
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Manage Subscription button
             SizedBox(
               width: double.infinity,
@@ -700,9 +723,9 @@ class _CurrentPlanCard extends StatelessWidget {
               child: DreamyPrimaryButton(
                 text: 'Manage',
                 onPressed: onManageSubscription,
-                textStyle: LunaTheme.buttonText(context).copyWith(
-                  fontSize: 18 * fontSizeProvider.scaleFactor,
-                ),
+                textStyle: LunaTheme.buttonText(
+                  context,
+                ).copyWith(fontSize: 18 * fontSizeProvider.scaleFactor),
                 fitText: false,
                 compact: true,
               ),
@@ -717,14 +740,12 @@ class _CurrentPlanCard extends StatelessWidget {
 class _FreePlanCard extends StatelessWidget {
   final FontSizeProvider fontSizeProvider;
 
-  const _FreePlanCard({
-    required this.fontSizeProvider,
-  });
+  const _FreePlanCard({required this.fontSizeProvider});
 
   @override
   Widget build(BuildContext context) {
     final isDark = LunaTheme.isDarkMode(context);
-    
+
     return Container(
       decoration: BoxDecoration(
         color: isDark ? LunaTheme.darkCard : LunaTheme.lightCard,
@@ -778,9 +799,9 @@ class _FreePlanCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Benefits list
                 Row(
                   children: [
@@ -792,9 +813,9 @@ class _FreePlanCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       '2 stories with ads',
-                      style: LunaTheme.body(context).copyWith(
-                        fontSize: 13 * fontSizeProvider.scaleFactor,
-                      ),
+                      style: LunaTheme.body(
+                        context,
+                      ).copyWith(fontSize: 13 * fontSizeProvider.scaleFactor),
                     ),
                   ],
                 ),
@@ -822,18 +843,14 @@ class _BenefitItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: LunaTheme.primary(context),
-          size: 20,
-        ),
+        Icon(icon, color: LunaTheme.primary(context), size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             text,
-            style: LunaTheme.body(context).copyWith(
-              fontSize: 15 * fontSizeProvider.scaleFactor,
-            ),
+            style: LunaTheme.body(
+              context,
+            ).copyWith(fontSize: 15 * fontSizeProvider.scaleFactor),
           ),
         ),
       ],

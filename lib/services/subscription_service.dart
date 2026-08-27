@@ -8,17 +8,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SubscriptionProductIds {
   static const String monthly = 'com.lunarae.mobile.storyweaver.monthly';
   static const String yearly = 'com.lunarae.mobile.storyweaver.yearly';
-  
+
   static const List<String> all = [monthly, yearly];
 }
 
 /// Subscription status enum
-enum SubscriptionStatus {
-  notSubscribed,
-  active,
-  expired,
-  pending,
-  unknown,
+enum SubscriptionStatus { notSubscribed, active, expired, pending, unknown }
+
+/// Result of an App Store purchase or restore action.
+///
+/// A successful result is only produced after StoreKit sends an update through
+/// [InAppPurchase.purchaseStream]; `buyNonConsumable` starting successfully is
+/// not itself proof of entitlement.
+enum SubscriptionActionResult {
+  success,
+  canceled,
+  error,
+  timedOut,
+  unavailable,
+  noActiveSubscription,
 }
 
 /// Subscription tier enum
@@ -49,17 +57,16 @@ class SubscriptionDetails {
   final SubscriptionStatus status;
   final DateTime? expiryDate;
   final String? transactionId;
-  
+
   SubscriptionDetails({
     required this.productId,
     required this.status,
     this.expiryDate,
     this.transactionId,
   });
-  
+
   bool get isActive => status == SubscriptionStatus.active;
 }
-
 
 /// Service to handle Apple subscriptions for Story Weaver
 class SubscriptionService extends ChangeNotifier {
@@ -69,24 +76,28 @@ class SubscriptionService extends ChangeNotifier {
 
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
-  
+
   // Product details
   ProductDetails? _monthlyProduct;
   ProductDetails? _yearlyProduct;
   bool _productsLoaded = false;
-  
+
   // Subscription state
   SubscriptionDetails? _currentSubscription;
   bool _isInitialized = false;
-  
+  Completer<SubscriptionActionResult>? _purchaseActionCompleter;
+  String? _purchaseProductId;
+  bool _isPurchasePending = false;
+  Future<void> _purchaseUpdateQueue = Future<void>.value();
+
   // Debug flag to prevent automatic subscription restore
   bool _debugSkipRestore = false;
-  
+
   // Daily story tracking
   SharedPreferences? _prefs;
   static const String _dailyStoryCountKey = 'daily_story_count';
   static const String _dailyResetDateKey = 'daily_reset_date';
-  
+
   // Getters
   ProductDetails? get monthlyProduct => _monthlyProduct;
   ProductDetails? get yearlyProduct => _yearlyProduct;
@@ -94,15 +105,23 @@ class SubscriptionService extends ChangeNotifier {
   SubscriptionDetails? get currentSubscription => _currentSubscription;
   bool get isSubscribed => _currentSubscription?.isActive ?? false;
   bool get isInitialized => _isInitialized;
+  bool get isPurchaseInProgress => _purchaseActionCompleter != null;
+  bool get isPurchasePending => _isPurchasePending;
 
   String get currentSubscriptionName {
     if (!isSubscribed) {
       return 'Free Plan';
     }
 
-    debugPrint('[SubscriptionService] currentSubscriptionName - productId: ${_currentSubscription?.productId}');
-    debugPrint('[SubscriptionService] currentSubscriptionName - monthly ID: ${SubscriptionProductIds.monthly}');
-    debugPrint('[SubscriptionService] currentSubscriptionName - yearly ID: ${SubscriptionProductIds.yearly}');
+    debugPrint(
+      '[SubscriptionService] currentSubscriptionName - productId: ${_currentSubscription?.productId}',
+    );
+    debugPrint(
+      '[SubscriptionService] currentSubscriptionName - monthly ID: ${SubscriptionProductIds.monthly}',
+    );
+    debugPrint(
+      '[SubscriptionService] currentSubscriptionName - yearly ID: ${SubscriptionProductIds.yearly}',
+    );
 
     switch (currentTier) {
       case SubscriptionTier.storyWeaver:
@@ -114,7 +133,9 @@ class SubscriptionService extends ChangeNotifier {
           debugPrint('[SubscriptionService] Detected as Yearly');
           return 'Story Weaver Yearly';
         }
-        debugPrint('[SubscriptionService] Unknown product ID, defaulting to Story Weaver');
+        debugPrint(
+          '[SubscriptionService] Unknown product ID, defaulting to Story Weaver',
+        );
         return 'Story Weaver';
 
       case SubscriptionTier.storyLibrary:
@@ -122,44 +143,51 @@ class SubscriptionService extends ChangeNotifier {
 
       case SubscriptionTier.free:
         return 'Free Plan';
-      }
     }
-  
+  }
+
   /// Check if user is subscribed to monthly plan
   bool get isSubscribedToMonthly {
-    return isSubscribed && _currentSubscription?.productId == SubscriptionProductIds.monthly;
+    return isSubscribed &&
+        _currentSubscription?.productId == SubscriptionProductIds.monthly;
   }
-  
+
   /// Check if user is subscribed to yearly plan
   bool get isSubscribedToYearly {
-    return isSubscribed && _currentSubscription?.productId == SubscriptionProductIds.yearly;
+    return isSubscribed &&
+        _currentSubscription?.productId == SubscriptionProductIds.yearly;
   }
-  
+
   // Computed properties
   SubscriptionTier get currentTier {
     // On Android, always return free tier since subscriptions are disabled
     // This enforces the 2 stories per day limit even in debug mode
     if (!Platform.isIOS) {
-      debugPrint('[SubscriptionService] Android platform - enforcing free tier with 2 stories/day limit');
+      debugPrint(
+        '[SubscriptionService] Android platform - enforcing free tier with 2 stories/day limit',
+      );
       return SubscriptionTier.free;
     }
-    
-    if (_currentSubscription?.isActive == true && _currentSubscription!.productId.isNotEmpty) {
-      return SubscriptionTierMapping.tierFromProductId(_currentSubscription!.productId);
+
+    if (_currentSubscription?.isActive == true &&
+        _currentSubscription!.productId.isNotEmpty) {
+      return SubscriptionTierMapping.tierFromProductId(
+        _currentSubscription!.productId,
+      );
     }
     return SubscriptionTier.free;
   }
-  
+
   int? get dailyLimit => getDailyLimit(currentTier);
-  
+
   bool get adsEnabled => currentTier == SubscriptionTier.free;
-  
+
   bool get fastGenerationEnabled => currentTier != SubscriptionTier.free;
-  
+
   /// Check if subscriptions are available on this platform
   /// Subscriptions are only available on iOS - Android users are always on free plan
   bool get isSubscriptionsAvailable => Platform.isIOS;
-  
+
   bool get hasUnlimitedStories => dailyLimit == null;
 
   int get storiesUsedToday {
@@ -170,7 +198,7 @@ class SubscriptionService extends ChangeNotifier {
       return 0;
     }
   }
-  
+
   int? get storiesRemainingToday {
     if (hasUnlimitedStories) return null;
     final limit = dailyLimit;
@@ -179,33 +207,37 @@ class SubscriptionService extends ChangeNotifier {
     final remaining = limit - used;
     return remaining > 0 ? remaining : 0;
   }
-  
+
   /// Initialize the subscription service
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     debugPrint('[SubscriptionService] Initializing...');
-    
+
     // Initialize SharedPreferences (needed on all platforms for daily story tracking)
     try {
       _prefs = await SharedPreferences.getInstance();
       debugPrint('[SubscriptionService] SharedPreferences initialized');
     } catch (e) {
-      debugPrint('[SubscriptionService] Error initializing SharedPreferences: $e');
+      debugPrint(
+        '[SubscriptionService] Error initializing SharedPreferences: $e',
+      );
       // Continue without SharedPreferences - app will use defaults
     }
-    
+
     // Reset daily count if needed (needed on all platforms)
     await resetDailyCountIfNeeded();
-    
+
     // Only initialize in-app purchases on iOS
     if (!Platform.isIOS) {
-      debugPrint('[SubscriptionService] Not iOS platform, skipping in-app purchase initialization');
+      debugPrint(
+        '[SubscriptionService] Not iOS platform, skipping in-app purchase initialization',
+      );
       _isInitialized = true;
       _logEntitlementState();
       return;
     }
-    
+
     // Check if in-app purchases are available
     final bool isAvailable = await _inAppPurchase.isAvailable();
     if (!isAvailable) {
@@ -214,128 +246,184 @@ class SubscriptionService extends ChangeNotifier {
       _logEntitlementState();
       return;
     }
-    
+
     // Listen to purchase updates
-    final Stream<List<PurchaseDetails>> purchaseUpdated = _inAppPurchase.purchaseStream;
+    final Stream<List<PurchaseDetails>> purchaseUpdated =
+        _inAppPurchase.purchaseStream;
     _subscription = purchaseUpdated.listen(
       _onPurchaseUpdate,
       onDone: _updateStreamOnDone,
       onError: _updateStreamOnError,
     );
-    
+
     // Load products
     await loadProducts();
-    
+
     // Check existing subscription status
     await checkSubscriptionStatus();
-    
+
     _isInitialized = true;
     debugPrint('[SubscriptionService] Initialization complete');
     _logEntitlementState();
   }
-  
+
   /// Load subscription products from App Store
   Future<void> loadProducts() async {
     // Only load products on iOS (Android uses free plan only)
     if (!Platform.isIOS) {
-      debugPrint('[SubscriptionService] Not iOS platform, skipping product load');
+      debugPrint(
+        '[SubscriptionService] Not iOS platform, skipping product load',
+      );
       return;
     }
-    
+
     debugPrint('[SubscriptionService] Loading products...');
-    
+
     final Set<String> productIds = SubscriptionProductIds.all.toSet();
-    final ProductDetailsResponse response = await _inAppPurchase.queryProductDetails(productIds);
-    
+    final ProductDetailsResponse response = await _inAppPurchase
+        .queryProductDetails(productIds);
+
     if (response.error != null) {
-      debugPrint('[SubscriptionService] Error loading products: ${response.error}');
+      debugPrint(
+        '[SubscriptionService] Error loading products: ${response.error}',
+      );
       return;
     }
-    
+
     if (response.notFoundIDs.isNotEmpty) {
-      debugPrint('[SubscriptionService] Products not found: ${response.notFoundIDs}');
+      debugPrint(
+        '[SubscriptionService] Products not found: ${response.notFoundIDs}',
+      );
     }
-    
+
     for (var product in response.productDetails) {
       if (product.id == SubscriptionProductIds.monthly) {
         _monthlyProduct = product;
-        debugPrint('[SubscriptionService] Monthly product loaded: ${product.title}');
+        debugPrint(
+          '[SubscriptionService] Monthly product loaded: ${product.title}',
+        );
       } else if (product.id == SubscriptionProductIds.yearly) {
         _yearlyProduct = product;
-        debugPrint('[SubscriptionService] Yearly product loaded: ${product.title}');
+        debugPrint(
+          '[SubscriptionService] Yearly product loaded: ${product.title}',
+        );
       }
     }
-    
+
     _productsLoaded = true;
     notifyListeners();
   }
-  
+
   /// Purchase monthly subscription
-  Future<bool> purchaseMonthly() async {
+  Future<SubscriptionActionResult> purchaseMonthly() async {
     if (_monthlyProduct == null) {
       debugPrint('[SubscriptionService] Monthly product not loaded');
-      return false;
+      return SubscriptionActionResult.unavailable;
     }
-    
+
     return _purchaseProduct(_monthlyProduct!);
   }
-  
+
   /// Purchase yearly subscription
-  Future<bool> purchaseYearly() async {
+  Future<SubscriptionActionResult> purchaseYearly() async {
     if (_yearlyProduct == null) {
       debugPrint('[SubscriptionService] Yearly product not loaded');
-      return false;
+      return SubscriptionActionResult.unavailable;
     }
-    
+
     return _purchaseProduct(_yearlyProduct!);
   }
-  
+
   /// Internal purchase method
-  Future<bool> _purchaseProduct(ProductDetails product) async {
+  Future<SubscriptionActionResult> _purchaseProduct(
+    ProductDetails product,
+  ) async {
     debugPrint('[SubscriptionService] Purchasing: ${product.id}');
-    
+
+    if (_purchaseActionCompleter != null) {
+      debugPrint('[SubscriptionService] A purchase is already in progress');
+      return SubscriptionActionResult.error;
+    }
+
     final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
-    
+    final completer = Completer<SubscriptionActionResult>();
+    _purchaseActionCompleter = completer;
+    _purchaseProductId = product.id;
+    _isPurchasePending = false;
+    notifyListeners();
+
     try {
-      final bool success = await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
-      debugPrint('[SubscriptionService] Purchase initiated: $success');
-      return success;
+      final bool started = await _inAppPurchase.buyNonConsumable(
+        purchaseParam: purchaseParam,
+      );
+      debugPrint('[SubscriptionService] Purchase request started: $started');
+      if (!started) {
+        _completePurchaseAction(SubscriptionActionResult.error);
+      }
     } catch (e) {
       debugPrint('[SubscriptionService] Purchase error: $e');
-      return false;
+      _completePurchaseAction(SubscriptionActionResult.error);
     }
+
+    return completer.future.timeout(
+      const Duration(minutes: 2),
+      onTimeout: () {
+        debugPrint(
+          '[SubscriptionService] Timed out waiting for purchase update',
+        );
+        _completePurchaseAction(SubscriptionActionResult.timedOut);
+        return SubscriptionActionResult.timedOut;
+      },
+    );
   }
-  
+
   /// Restore purchases
-  Future<void> restorePurchases() async {
+  Future<SubscriptionActionResult> restorePurchases() async {
     debugPrint('[SubscriptionService] Restoring purchases...');
-    
+
+    if (!Platform.isIOS) {
+      return SubscriptionActionResult.unavailable;
+    }
+
     try {
       await _inAppPurchase.restorePurchases();
       debugPrint('[SubscriptionService] Restore purchases initiated');
+
+      // The generic in_app_purchase API delivers restored transactions through
+      // purchaseStream and does not expose a separate restore-complete event.
+      // Give queued stream updates a chance to finish before reporting the
+      // StoreKit-derived entitlement result to the caller.
+      await Future<void>.delayed(const Duration(seconds: 2));
+      await _purchaseUpdateQueue;
+      return isSubscribed
+          ? SubscriptionActionResult.success
+          : SubscriptionActionResult.noActiveSubscription;
     } catch (e) {
       debugPrint('[SubscriptionService] Restore purchases error: $e');
+      return SubscriptionActionResult.error;
     }
   }
-  
+
   /// Debug method to clear subscription state (for sandbox testing)
   /// Call this to reset subscription status during development
   Future<void> debugClearSubscription() async {
     debugPrint('[SubscriptionService] DEBUG: Clearing subscription state');
-    
+
     _currentSubscription = null;
     _debugSkipRestore = true; // Prevent automatic restore
-    
+
     // Clear daily story count as well
     if (_prefs != null) {
       await _prefs?.setInt(_dailyStoryCountKey, 0);
       await _prefs?.setInt(_dailyResetDateKey, _dateToYyyyMmDd(DateTime.now()));
     }
-    
+
     notifyListeners();
-    debugPrint('[SubscriptionService] DEBUG: Subscription state cleared, automatic restore disabled');
+    debugPrint(
+      '[SubscriptionService] DEBUG: Subscription state cleared, automatic restore disabled',
+    );
   }
-  
+
   /// Debug method to re-enable subscription restore (for sandbox testing)
   /// Call this after clearing subscription to test subscription flow again
   Future<void> debugEnableRestore() async {
@@ -344,11 +432,13 @@ class SubscriptionService extends ChangeNotifier {
     notifyListeners();
     debugPrint('[SubscriptionService] DEBUG: Subscription restore re-enabled');
   }
-  
+
   /// Handle purchase updates
   void _onPurchaseUpdate(List<PurchaseDetails> purchaseDetailsList) {
-    debugPrint('[SubscriptionService] _onPurchaseUpdate received ${purchaseDetailsList.length} purchases');
-    
+    debugPrint(
+      '[SubscriptionService] _onPurchaseUpdate received ${purchaseDetailsList.length} purchases',
+    );
+
     // DIAGNOSTIC: Log detailed information about each purchase
     for (final PurchaseDetails purchase in purchaseDetailsList) {
       debugPrint('[SubscriptionService] PurchaseDetails:');
@@ -356,54 +446,71 @@ class SubscriptionService extends ChangeNotifier {
       debugPrint('  Status: ${purchase.status}');
       debugPrint('  Purchase ID: ${purchase.purchaseID}');
       debugPrint('  Transaction Date: ${purchase.transactionDate}');
-      debugPrint('  Pending Complete Purchase: ${purchase.pendingCompletePurchase}');
+      debugPrint(
+        '  Pending Complete Purchase: ${purchase.pendingCompletePurchase}',
+      );
       debugPrint('  Error: ${purchase.error}');
     }
-    
+
     // Sort purchases to prioritize yearly subscriptions
     final sortedPurchases = List<PurchaseDetails>.from(purchaseDetailsList);
     sortedPurchases.sort((a, b) {
       // Put yearly subscriptions first
-      if (a.productID == SubscriptionProductIds.yearly && b.productID != SubscriptionProductIds.yearly) {
+      if (a.productID == SubscriptionProductIds.yearly &&
+          b.productID != SubscriptionProductIds.yearly) {
         return -1;
       }
-      if (a.productID != SubscriptionProductIds.yearly && b.productID == SubscriptionProductIds.yearly) {
+      if (a.productID != SubscriptionProductIds.yearly &&
+          b.productID == SubscriptionProductIds.yearly) {
         return 1;
       }
       return 0;
     });
-    
-    for (final PurchaseDetails purchaseDetails in sortedPurchases) {
-      debugPrint('[SubscriptionService] Processing purchase: ${purchaseDetails.productID}, status: ${purchaseDetails.status}');
-      _handlePurchase(purchaseDetails);
-    }
+
+    _purchaseUpdateQueue = _purchaseUpdateQueue
+        .then((_) async {
+          for (final PurchaseDetails purchaseDetails in sortedPurchases) {
+            debugPrint(
+              '[SubscriptionService] Processing purchase: ${purchaseDetails.productID}, status: ${purchaseDetails.status}',
+            );
+            await _handlePurchase(purchaseDetails);
+          }
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          debugPrint(
+            '[SubscriptionService] Error processing purchase update: $error',
+          );
+        });
   }
-  
+
   /// Handle individual purchase
   Future<void> _handlePurchase(PurchaseDetails purchaseDetails) async {
-    debugPrint('[SubscriptionService] Handling purchase: ${purchaseDetails.productID}, status: ${purchaseDetails.status}');
-    
+    debugPrint(
+      '[SubscriptionService] Handling purchase: ${purchaseDetails.productID}, status: ${purchaseDetails.status}',
+    );
+
     switch (purchaseDetails.status) {
       case PurchaseStatus.pending:
         debugPrint('[SubscriptionService] Purchase pending');
-        _updateSubscriptionStatus(
-          productId: purchaseDetails.productID,
-          status: SubscriptionStatus.pending,
-          transactionId: purchaseDetails.purchaseID,
-        );
+        // Do not replace an existing entitlement while an upgrade or renewal is
+        // pending. The terminal stream update determines the final state.
+        _isPurchasePending = true;
+        notifyListeners();
         break;
-        
+
       case PurchaseStatus.purchased:
         debugPrint('[SubscriptionService] New purchase successful');
 
-        if (Platform.isIOS) {
-          await _verifyAndFinishPurchase(purchaseDetails);
-        }
+        await _completePurchaseIfNeeded(purchaseDetails);
 
         _updateSubscriptionStatus(
           productId: purchaseDetails.productID,
           status: SubscriptionStatus.active,
           transactionId: purchaseDetails.purchaseID,
+        );
+        _completePurchaseAction(
+          SubscriptionActionResult.success,
+          purchaseDetails.productID,
         );
         break;
 
@@ -413,55 +520,52 @@ class SubscriptionService extends ChangeNotifier {
           '${purchaseDetails.productID}',
         );
 
-        // A restored transaction is historical purchase information.
-        // Do NOT automatically treat it as an active subscription here.
-        //
-        // The subscription must be validated before we grant the entitlement.
-        if (purchaseDetails.pendingCompletePurchase) {
-          await _inAppPurchase.completePurchase(purchaseDetails);
-        }
-
-        debugPrint(
-          '[SubscriptionService] Restored transaction NOT automatically '
-          'marked active: ${purchaseDetails.productID}',
+        // StoreKit only delivers restorable App Store transactions through this
+        // path. Treat the restored Story Weaver transaction as the current
+        // entitlement, just as a newly purchased transaction is treated.
+        await _completePurchaseIfNeeded(purchaseDetails);
+        _updateSubscriptionStatus(
+          productId: purchaseDetails.productID,
+          status: SubscriptionStatus.active,
+          transactionId: purchaseDetails.purchaseID,
+        );
+        _completePurchaseAction(
+          SubscriptionActionResult.success,
+          purchaseDetails.productID,
         );
         break;
 
       case PurchaseStatus.error:
-        debugPrint('[SubscriptionService] Purchase error: ${purchaseDetails.error}');
-        _updateSubscriptionStatus(
-          productId: purchaseDetails.productID,
-          status: SubscriptionStatus.unknown,
-          transactionId: purchaseDetails.purchaseID,
+        debugPrint(
+          '[SubscriptionService] Purchase error: ${purchaseDetails.error}',
         );
-        
-        // Finish transaction even on error
-        if (purchaseDetails.pendingCompletePurchase) {
-          await _inAppPurchase.completePurchase(purchaseDetails);
-        }
+        // An unsuccessful purchase attempt must not revoke an already-active
+        // monthly or yearly entitlement.
+        await _completePurchaseIfNeeded(purchaseDetails);
+        _completePurchaseAction(
+          SubscriptionActionResult.error,
+          purchaseDetails.productID,
+        );
         break;
-        
+
       case PurchaseStatus.canceled:
         debugPrint('[SubscriptionService] Purchase canceled');
-        _updateSubscriptionStatus(
-          productId: purchaseDetails.productID,
-          status: SubscriptionStatus.notSubscribed,
-          transactionId: purchaseDetails.purchaseID,
+        // Cancelling the purchase sheet is not the same as cancelling an
+        // existing subscription in App Store settings.
+        await _completePurchaseIfNeeded(purchaseDetails);
+        _completePurchaseAction(
+          SubscriptionActionResult.canceled,
+          purchaseDetails.productID,
         );
-        
-        if (purchaseDetails.pendingCompletePurchase) {
-          await _inAppPurchase.completePurchase(purchaseDetails);
-        }
         break;
     }
   }
-  
-  /// Verify and finish purchase on iOS
-  Future<void> _verifyAndFinishPurchase(PurchaseDetails purchaseDetails) async {
+
+  /// Finish a StoreKit transaction after the purchase stream has delivered it.
+  Future<void> _completePurchaseIfNeeded(
+    PurchaseDetails purchaseDetails,
+  ) async {
     try {
-      // In production, you should verify the purchase with your backend
-      // For now, we'll trust the local receipt (as per Apple's guidelines for simple apps)
-      
       if (purchaseDetails.pendingCompletePurchase) {
         await _inAppPurchase.completePurchase(purchaseDetails);
         debugPrint('[SubscriptionService] Purchase completed');
@@ -470,7 +574,26 @@ class SubscriptionService extends ChangeNotifier {
       debugPrint('[SubscriptionService] Error completing purchase: $e');
     }
   }
-  
+
+  void _completePurchaseAction(
+    SubscriptionActionResult result, [
+    String? productId,
+  ]) {
+    if (_purchaseActionCompleter == null ||
+        (productId != null && productId != _purchaseProductId)) {
+      return;
+    }
+
+    final completer = _purchaseActionCompleter!;
+    _purchaseActionCompleter = null;
+    _purchaseProductId = null;
+    _isPurchasePending = false;
+    if (!completer.isCompleted) {
+      completer.complete(result);
+    }
+    notifyListeners();
+  }
+
   /// Update subscription status
   void _updateSubscriptionStatus({
     required String productId,
@@ -478,24 +601,32 @@ class SubscriptionService extends ChangeNotifier {
     String? transactionId,
   }) {
     // If upgrading from monthly to yearly, prefer the yearly subscription
-    if (status == SubscriptionStatus.active && productId == SubscriptionProductIds.yearly) {
-      debugPrint('[SubscriptionService] Yearly subscription detected, setting as current');
+    if (status == SubscriptionStatus.active &&
+        productId == SubscriptionProductIds.yearly) {
+      debugPrint(
+        '[SubscriptionService] Yearly subscription detected, setting as current',
+      );
       _currentSubscription = SubscriptionDetails(
         productId: productId,
         status: status,
         transactionId: transactionId,
       );
-    } else if (status == SubscriptionStatus.active && productId == SubscriptionProductIds.monthly) {
+    } else if (status == SubscriptionStatus.active &&
+        productId == SubscriptionProductIds.monthly) {
       // Only set monthly if we don't already have a yearly subscription
       if (_currentSubscription?.productId != SubscriptionProductIds.yearly) {
-        debugPrint('[SubscriptionService] Monthly subscription detected, setting as current');
+        debugPrint(
+          '[SubscriptionService] Monthly subscription detected, setting as current',
+        );
         _currentSubscription = SubscriptionDetails(
           productId: productId,
           status: status,
           transactionId: transactionId,
         );
       } else {
-        debugPrint('[SubscriptionService] Monthly subscription detected but keeping yearly as current');
+        debugPrint(
+          '[SubscriptionService] Monthly subscription detected but keeping yearly as current',
+        );
       }
     } else if (status == SubscriptionStatus.notSubscribed) {
       // Only clear subscription if it matches the product being cancelled
@@ -503,10 +634,14 @@ class SubscriptionService extends ChangeNotifier {
         debugPrint('[SubscriptionService] Subscription cancelled: $productId');
         _currentSubscription = null;
       } else {
-        debugPrint('[SubscriptionService] Ignoring cancellation for different product: $productId vs ${_currentSubscription?.productId}');
+        debugPrint(
+          '[SubscriptionService] Ignoring cancellation for different product: $productId vs ${_currentSubscription?.productId}',
+        );
       }
     } else {
-      debugPrint('[SubscriptionService] Subscription updated: $productId, $status');
+      debugPrint(
+        '[SubscriptionService] Subscription updated: $productId, $status',
+      );
       _currentSubscription = SubscriptionDetails(
         productId: productId,
         status: status,
@@ -514,52 +649,60 @@ class SubscriptionService extends ChangeNotifier {
       );
     }
 
-    debugPrint('[SubscriptionService] Final subscription state: ${_currentSubscription?.productId}, ${_currentSubscription?.status}');
-    
+    debugPrint(
+      '[SubscriptionService] Final subscription state: ${_currentSubscription?.productId}, ${_currentSubscription?.status}',
+    );
+
     notifyListeners();
   }
-  
+
   /// Check subscription status on app launch
   Future<void> checkSubscriptionStatus() async {
     // On Android, set to not subscribed (free plan)
     if (!Platform.isIOS) {
-      debugPrint('[SubscriptionService] Android platform - setting to free plan');
+      debugPrint(
+        '[SubscriptionService] Android platform - setting to free plan',
+      );
       _updateSubscriptionStatus(
         productId: '',
         status: SubscriptionStatus.notSubscribed,
       );
       return;
     }
-    
+
     debugPrint('[SubscriptionService] Checking subscription status...');
-    
+
     // Skip restore if debug flag is set (for sandbox testing)
     if (_debugSkipRestore) {
-      debugPrint('[SubscriptionService] DEBUG: Skipping subscription restore due to debug flag');
+      debugPrint(
+        '[SubscriptionService] DEBUG: Skipping subscription restore due to debug flag',
+      );
       _updateSubscriptionStatus(
         productId: '',
         status: SubscriptionStatus.notSubscribed,
       );
       return;
     }
-    
-    // Trigger restorePurchases() to let StoreKit deliver any updated transaction states
-    // Note: We don't rely on restored transactions to set active status (see _handlePurchase)
-    // This is primarily to ensure any pending transactions are completed
-    debugPrint('[SubscriptionService] Triggering purchase restore for transaction completion');
-    await restorePurchases();
-    
-    // The subscription state is now based on:
-    // 1. Any purchase events received via the purchase stream (only PurchaseStatus.purchased sets active)
-    // 2. Restored transactions are NOT automatically treated as active (see _handlePurchase)
-    // 3. Users must manually restore purchases after app restart to regain access
+
+    debugPrint(
+      '[SubscriptionService] Restoring StoreKit entitlements at launch',
+    );
+    final result = await restorePurchases();
+    if (result == SubscriptionActionResult.noActiveSubscription) {
+      _updateSubscriptionStatus(
+        productId: '',
+        status: SubscriptionStatus.notSubscribed,
+      );
+    }
   }
-  
+
   /// Force refresh subscription status by restoring purchases
   /// Useful after upgrades or when subscription status might have changed
-  Future<void> refreshSubscriptionStatus() async {
+  Future<SubscriptionActionResult> refreshSubscriptionStatus() async {
     debugPrint('[SubscriptionService] Force refreshing subscription status...');
-    debugPrint('[SubscriptionService] Current subscription before refresh: ${_currentSubscription?.productId}');
+    debugPrint(
+      '[SubscriptionService] Current subscription before refresh: ${_currentSubscription?.productId}',
+    );
 
     // On Android, ensure we're on free plan
     if (!Platform.isIOS) {
@@ -568,46 +711,50 @@ class SubscriptionService extends ChangeNotifier {
         productId: '',
         status: SubscriptionStatus.notSubscribed,
       );
-      return;
+      return SubscriptionActionResult.unavailable;
     }
 
     // Clear current subscription temporarily to force refresh
     _currentSubscription = null;
     notifyListeners();
 
-    // Restore purchases to get latest status
-    // Note: This will deliver restored transactions, but they won't automatically set the subscription as active
-    // (see _handlePurchase for PurchaseStatus.restored handling)
-    await restorePurchases();
-
-    // Wait for restore to complete and process all purchases
-    await Future.delayed(const Duration(milliseconds: 2000));
+    // Restore purchases to get the current StoreKit entitlement.
+    final result = await restorePurchases();
 
     // If no subscription found after restore, mark as not subscribed
-    if (_currentSubscription == null) {
+    if (result == SubscriptionActionResult.noActiveSubscription) {
       _updateSubscriptionStatus(
         productId: '',
         status: SubscriptionStatus.notSubscribed,
       );
     }
 
-    debugPrint('[SubscriptionService] Subscription status refreshed: ${_currentSubscription?.productId}');
-    debugPrint('[SubscriptionService] isSubscribedToYearly: $isSubscribedToYearly');
-    debugPrint('[SubscriptionService] isSubscribedToMonthly: $isSubscribedToMonthly');
-    debugPrint('[SubscriptionService] currentSubscriptionName: $currentSubscriptionName');
+    debugPrint(
+      '[SubscriptionService] Subscription status refreshed: ${_currentSubscription?.productId}',
+    );
+    debugPrint(
+      '[SubscriptionService] isSubscribedToYearly: $isSubscribedToYearly',
+    );
+    debugPrint(
+      '[SubscriptionService] isSubscribedToMonthly: $isSubscribedToMonthly',
+    );
+    debugPrint(
+      '[SubscriptionService] currentSubscriptionName: $currentSubscriptionName',
+    );
+    return result;
   }
-  
+
   /// Stream done callback
   void _updateStreamOnDone() {
     debugPrint('[SubscriptionService] Purchase stream done');
     _subscription?.cancel();
   }
-  
+
   /// Stream error callback
   void _updateStreamOnError(dynamic error) {
     debugPrint('[SubscriptionService] Purchase stream error: $error');
   }
-  
+
   /// Get daily limit for a subscription tier
   int? getDailyLimit(SubscriptionTier tier) {
     switch (tier) {
@@ -619,23 +766,25 @@ class SubscriptionService extends ChangeNotifier {
         return null; // Unlimited
     }
   }
-  
+
   /// Convert DateTime to YYYYMMDD integer using local timezone
   int _dateToYyyyMmDd(DateTime date) {
     final localDate = date.toLocal();
     return localDate.year * 10000 + localDate.month * 100 + localDate.day;
   }
-  
+
   /// Reset daily story count if the calendar date has changed
   Future<void> resetDailyCountIfNeeded() async {
     if (_prefs == null) return;
-    
+
     try {
       final today = _dateToYyyyMmDd(DateTime.now());
       final storedDate = _prefs?.getInt(_dailyResetDateKey);
 
       if (storedDate == null || storedDate != today) {
-        debugPrint('[SubscriptionService] Resetting daily story count. Previous date: $storedDate, Today: $today');
+        debugPrint(
+          '[SubscriptionService] Resetting daily story count. Previous date: $storedDate, Today: $today',
+        );
         await _prefs?.setInt(_dailyStoryCountKey, 0);
         await _prefs?.setInt(_dailyResetDateKey, today);
         notifyListeners();
@@ -645,7 +794,7 @@ class SubscriptionService extends ChangeNotifier {
       // Continue with existing count
     }
   }
-  
+
   /// Get duration until next daily reset (midnight local time)
   Duration untilNextReset() {
     final now = DateTime.now().toLocal();
@@ -653,7 +802,7 @@ class SubscriptionService extends ChangeNotifier {
     return midnight.difference(now);
   }
 
-    /// Returns true if the user can generate another story today.
+  /// Returns true if the user can generate another story today.
   Future<bool> canGenerateStory() async {
     await resetDailyCountIfNeeded();
 
@@ -681,8 +830,8 @@ class SubscriptionService extends ChangeNotifier {
       final newCount = currentCount + 1;
 
       debugPrint(
-  '[SubscriptionService] Recording story -> current=$currentCount new=$newCount',
-);
+        '[SubscriptionService] Recording story -> current=$currentCount new=$newCount',
+      );
 
       await _prefs!.setInt(_dailyStoryCountKey, newCount);
 
@@ -692,9 +841,7 @@ class SubscriptionService extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      debugPrint(
-        '[SubscriptionService] Failed to record generated story: $e',
-      );
+      debugPrint('[SubscriptionService] Failed to record generated story: $e');
     }
   }
 
@@ -709,21 +856,16 @@ class SubscriptionService extends ChangeNotifier {
 
     try {
       await _prefs!.setInt(_dailyStoryCountKey, 0);
-      await _prefs!.setInt(
-        _dailyResetDateKey,
-        _dateToYyyyMmDd(DateTime.now()),
-      );
+      await _prefs!.setInt(_dailyResetDateKey, _dateToYyyyMmDd(DateTime.now()));
 
       debugPrint('[SubscriptionService] Daily story count manually reset');
 
       notifyListeners();
     } catch (e) {
-      debugPrint(
-        '[SubscriptionService] Failed to reset daily story count: $e',
-      );
+      debugPrint('[SubscriptionService] Failed to reset daily story count: $e');
     }
   }
-  
+
   /// Log current entitlement state for debugging
   void _logEntitlementState() {
     debugPrint('[SubscriptionService] Entitlement State:');
@@ -734,7 +876,7 @@ class SubscriptionService extends ChangeNotifier {
     debugPrint('  Ads Enabled: $adsEnabled');
     debugPrint('  Fast Generation Enabled: $fastGenerationEnabled');
   }
-  
+
   /// Dispose the service
   @override
   void dispose() {
