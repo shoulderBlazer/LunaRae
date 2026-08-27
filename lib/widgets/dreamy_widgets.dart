@@ -48,6 +48,8 @@ class DreamyPrimaryButton extends StatefulWidget {
   final bool isLoading;
   final IconData? icon;
   final bool compact;
+  final TextStyle? textStyle;
+  final bool fitText;
   
   const DreamyPrimaryButton({
     super.key,
@@ -56,6 +58,8 @@ class DreamyPrimaryButton extends StatefulWidget {
     this.isLoading = false,
     this.icon,
     this.compact = false,
+    this.textStyle,
+    this.fitText = true,
   });
 
   @override
@@ -122,26 +126,44 @@ class _DreamyPrimaryButtonState extends State<DreamyPrimaryButton>
           child: Center(
             child: widget.isLoading
                 ? _MoonLoadingIndicator(isDark: isDark)
-                : FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (widget.icon != null) ...[
-                          Icon(
-                            widget.icon,
-                            color: isDark ? LunaTheme.darkCard : LunaTheme.lightCard,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                        ],
-                        Text(
-                          widget.text,
-                          style: LunaTheme.buttonText(context),
+                : widget.fitText
+                    ? FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (widget.icon != null) ...[
+                              Icon(
+                                widget.icon,
+                                color: isDark ? LunaTheme.darkCard : LunaTheme.lightCard,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                            ],
+                            Text(
+                              widget.text,
+                              style: widget.textStyle ?? LunaTheme.buttonText(context),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (widget.icon != null) ...[
+                            Icon(
+                              widget.icon,
+                              color: isDark ? LunaTheme.darkCard : LunaTheme.lightCard,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Text(
+                            widget.text,
+                            style: widget.textStyle ?? LunaTheme.buttonText(context),
+                          ),
+                        ],
+                      ),
           ),
         ),
       ),

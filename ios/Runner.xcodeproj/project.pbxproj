@@ -18,7 +18,6 @@
 		EB65270F428A668503D5ECD4 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 9E880695BCAF6A58122DD569 /* GoogleService-Info.plist */; };
 		F4B9723E22E315A89EBE1D0C /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 596441FBB7ECFCC3F0542B58 /* Pods_Runner.framework */; };
 		F69AA95307BF34C702D4AC57 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3A0AE3BD6D0395EB900ED3A5 /* Pods_RunnerTests.framework */; };
-		FC3C9B9B2AECB46A00862997 /* Crashlytics Upload dSYMs in Sources */ = {isa = PBXBuildFile; fileRef = FC3C9B9A2AECB46A00862997 /* Crashlytics Upload dSYMs */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,7 +69,6 @@
 		B157857B6E24111A73C762C3 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		D7ED5E2747BA663502433F70 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		FC320C92F8C8E66D8B532289 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
-		FC3C9B9A2AECB46A00862997 /* Crashlytics Upload dSYMs */ = {isa = PBXFileReference; explicitFileType = "script.text"; includeInIndex = 0; path = Crashlytics_Upload_dSYMs; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -397,7 +395,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "# Find the upload-symbols script in Firebase SDK\nFIREBASE_SDK_PATH=\"${BUILD_DIR%Build/*}/SourcePackages/checkouts/firebase-ios-sdk\"\nUPLOAD_SCRIPT=\"${FIREBASE_SDK_PATH}/Crashlytics/upload-symbols\"\n\n# If script not found in SPM checkout, try alternate locations\nif [ ! -f \"${UPLOAD_SCRIPT}\" ]; then\n  UPLOAD_SCRIPT=\"${PODS_ROOT}/FirebaseCrashlytics/upload-symbols\"\nfi\n\n# If still not found, try framework bundle\nif [ ! -f \"${UPLOAD_SCRIPT}\" ]; then\n  UPLOAD_SCRIPT=\"${BUILT_PRODUCTS_DIR}/FirebaseCrashlytics.framework/upload-symbols\"\nfi\n\n# Upload dSYMs only for Release and App Store builds\nif [ \"${CONFIGURATION}\" = \"Release\" ] || [ \"${CONFIGURATION}\" = \"Release-AppStore\" ]; then\n  if [ -f \"${UPLOAD_SCRIPT}\" ]; then\n    echo \"Uploading dSYMs to Firebase Crashlytics...\"\n    \"${UPLOAD_SCRIPT}\" -gsp \"${SRCROOT}/Runner/GoogleService-Info.plist\" -p ios \"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\n    echo \"dSYM upload completed\"\n  else\n    echo \"Warning: upload-symbols script not found at ${UPLOAD_SCRIPT}\"\n  fi\nelse\n  echo \"Skipping dSYM upload for ${CONFIGURATION} build\"\nfi\n";
-			showEnvVarsInLog = 1;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -507,6 +504,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 5Q5CW3M9J7;
 				ENABLE_BITCODE = NO;
@@ -518,6 +517,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lunarae.mobile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_ORIENTATION = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -692,6 +692,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 5Q5CW3M9J7;
 				ENABLE_BITCODE = NO;
@@ -703,6 +705,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lunarae.mobile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_ORIENTATION = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -717,6 +720,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 5Q5CW3M9J7;
 				ENABLE_BITCODE = NO;
@@ -728,6 +733,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lunarae.mobile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_ORIENTATION = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

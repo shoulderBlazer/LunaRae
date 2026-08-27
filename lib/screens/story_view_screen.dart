@@ -9,6 +9,7 @@ import '../widgets/banner_ad_widget.dart' show StoryOutputBannerAd;
 import '../widgets/dreamy_widgets.dart';
 import '../widgets/frosted_header.dart';
 import '../services/ad_service.dart';
+import '../services/subscription_service.dart';
 import 'privacy_screen.dart';
 import 'terms_screen.dart';
 
@@ -80,14 +81,22 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   }
 
   /// Handle "Create Another Story" button tap
-  /// Shows interstitial (if not already shown), then navigates back
+  /// Shows interstitial (if not already shown and not premium), then navigates back
   void _onCreateAnotherStory() {
     // Prevent double-tap
     if (_isNavigating) return;
     _isNavigating = true;
     
-    // Try to show interstitial, then navigate back
-    _showInterstitialOnce(onComplete: _navigateBack);
+    // Check if user has premium subscription (only applies on iOS)
+    final isPremium = SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed;
+    
+    if (isPremium) {
+      debugPrint('[StoryViewScreen] Premium user - skipping interstitial');
+      _navigateBack();
+    } else {
+      // Try to show interstitial, then navigate back
+      _showInterstitialOnce(onComplete: _navigateBack);
+    }
   }
   
   void _navigateBack() {
@@ -101,7 +110,15 @@ class _StoryViewScreenState extends State<StoryViewScreen>
     if (_hasReachedStoryBottom) return;
     _hasReachedStoryBottom = true;
     
-    // Show interstitial ad after 5 second delay (gives user time to read ending)
+    // Check if user has premium subscription (only applies on iOS)
+    final isPremium = SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed;
+    
+    if (isPremium) {
+      debugPrint('[StoryViewScreen] Premium user - skipping scroll-to-bottom interstitial');
+      return;
+    }
+    
+    // Show interstitial ad after 8 second delay (gives user time to read ending)
     Future.delayed(const Duration(seconds: 8), () {
       if (mounted) {
         _showInterstitialOnce();

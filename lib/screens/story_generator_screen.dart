@@ -17,6 +17,8 @@ import '../widgets/banner_ad_widget.dart' show BannerAdWithFooter;
 import '../widgets/dreamy_widgets.dart' show DreamyBackground, DreamyCard, DreamyInput, DreamyPrimaryButton, DreamySecondaryButton, MoonLoadingIndicator, DreamyPageRoute;
 import '../widgets/frosted_header.dart';
 import '../services/story_ad_manager.dart';
+import '../services/subscription_service.dart';
+import 'subscription_screen.dart';
 
 class StoryGeneratorScreen extends StatefulWidget {
   const StoryGeneratorScreen({super.key});
@@ -27,6 +29,7 @@ class StoryGeneratorScreen extends StatefulWidget {
 
 class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
   final TextEditingController promptController = TextEditingController();
+  final SubscriptionService subscriptionService = SubscriptionService();
   bool _isLoading = false;
   StoryService? _storyService;
   final GlobalKey _headerKey = GlobalKey();
@@ -42,8 +45,9 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Force rebuild when orientation changes
-    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _measureHeader();
+    });
   }
 
   void _measureHeader() {
@@ -83,345 +87,423 @@ class _StoryGeneratorScreenState extends State<StoryGeneratorScreen> {
 
   Future<void> _generateStory() async {
     debugPrint('[StoryGenerator] Generate button pressed');
+
     FocusScope.of(context).unfocus();
 
     if (promptController.text.trim().isEmpty) return;
 
-    setState(() => _isLoading = true);
+    // Check daily story limit
+    final canGenerate = await subscriptionService.canGenerateStory();
 
-    if (_storyService == null) {
-      _storyService = StoryService(ApiKeys.openAiKey);
+    if (!canGenerate) {
+      if (!mounted) return;
+
+      // Check if user is a Story Weaver subscriber
+      final isSubscribed = subscriptionService.isSubscribed;
+
+      if (isSubscribed) {
+        // Show custom message for Story Weaver subscribers
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              "Today's stories are all woven.\n\nYou've enjoyed all 5 stories for today. Your next stories will be ready after midnight.\n\nThank you for being a Story Weaver member.",
+            ),
+            backgroundColor: LunaTheme.primary(context),
+            behavior: SnackBarBehavior.floating,
+            action: subscriptionService.isSubscriptionsAvailable
+                ? SnackBarAction(
+                    label: 'View Plans',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SubscriptionScreen(),
+                        ),
+                      );
+                    },
+                  )
+                : null,
+          ),
+        );
+      } else {
+        // Show upgrade message for free users
+        final isAndroid = Theme.of(context).platform == TargetPlatform.android;
+        final message = isAndroid
+            ? "Today's stories are all woven.\n\nYou've enjoyed your 2 free stories for today. Your next stories will be ready after midnight."
+            : "Today's stories are all woven.\n\nYou've enjoyed your 2 free stories for today. Your next stories will be ready after midnight.\n\nUnlock up to 5 stories every day with Story Weaver.";
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: LunaTheme.primary(context),
+            behavior: SnackBarBehavior.floating,
+            action: subscriptionService.isSubscriptionsAvailable
+                ? SnackBarAction(
+                    label: 'View Plans',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SubscriptionScreen(),
+                        ),
+                      );
+                    },
+                  )
+                : null,
+          ),
+        );
+      }
+
+      return;
     }
 
-    // Check if we should show an interstitial during generation
-    final shouldShowAd = StoryAdManager.shouldShowGenerationInterstitial();
+    setState(() => _isLoading = true);
 
-    if (shouldShowAd) {
-      debugPrint('[StoryGenerator] Showing generation interstitial');
-      // Show interstitial ad before generating story
-      await StoryAdManager.showGenerationInterstitial(
-        onAdComplete: () {
-          debugPrint('[StoryGenerator] Continuing story generation');
-          // After ad is dismissed, proceed with story generation
-          _performStoryGeneration();
-        },
-      );
+    _storyService ??= StoryService(ApiKeys.openAiKey);
+
+    final isPremium = subscriptionService.isSubscribed;
+
+    debugPrint(
+      '[StoryGenerator] User premium status: $isPremium',
+    );
+
+    if (!isPremium) {
+      final shouldShowAd =
+          StoryAdManager.shouldShowGenerationInterstitial();
+
+      if (shouldShowAd) {
+        debugPrint('[StoryGenerator] Showing generation interstitial');
+
+        await StoryAdManager.showGenerationInterstitial(
+          onAdComplete: () async {
+            debugPrint('[StoryGenerator] Continuing story generation');
+            await _performStoryGeneration();
+          },
+        );
+      } else {
+        await _performStoryGeneration();
+      }
     } else {
-      debugPrint('[StoryGenerator] Skipping generation interstitial');
-      // Generate story normally without ad
-      _performStoryGeneration();
+      debugPrint('[StoryGenerator] Premium user - skipping ads');
+
+      await _performStoryGeneration();
     }
   }
 
   Future<void> _performStoryGeneration() async {
     try {
       final story = await _storyService!.generateStory(promptController.text.trim());
-      
-      if (!mounted) return;
-      
-      // Create a summary title from the prompt
-      final summaryTitle = _createStoryTitle(promptController.text.trim());
-      
-      // Log analytics event for story generation
-      await FirebaseAnalyticsService().logEvent(
-        name: 'story_generated',
-        parameters: {
-          'prompt_length': promptController.text.trim().length,
-          'story_length': story.length,
-          'timestamp': DateTime.now().toIso8601String(),
-        },
-      );
-      
-      Navigator.push(
-        context,
-        DreamyPageRoute(
-          page: StoryViewScreen(
-            content: story,
-            storyTitle: summaryTitle,
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      final message = e.toString().contains('OPENAI_API_KEY')
-          ? (kReleaseMode
-              ? 'App build is missing the OpenAI API key. Please contact support.'
-              : 'Missing OPENAI_API_KEY. Run/build with --dart-define=OPENAI_API_KEY=...')
-          : 'Unable to create story. Please try again.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: LunaTheme.primary(context),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    final fontSizeProvider = context.watch<FontSizeProvider>();
-    final scaledBodyStyle = LunaTheme.body(context).copyWith(
-      fontSize: 16 * fontSizeProvider.scaleFactor,
-    );
-    final scaledHintStyle = LunaTheme.hintText(context).copyWith(
-      fontSize: 16 * fontSizeProvider.scaleFactor,
-    );
-    final footerHeight = BannerAdWithFooter.calculateFooterHeight(context);
-    
-    // Fixed gap between header and card
-    const dynamicGap = 24.0;
-    
-    // Schedule header measurement after layout
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureHeader());
-    
-    return Scaffold(
-      extendBody: true,
-      extendBodyBehindAppBar: true,
-      bottomNavigationBar: BannerAdWithFooter(footerLinks: const _FooterLinks()),
-      floatingActionButton: null,
-      body: OrientationBuilder(
-        builder: (context, orientation) {
-          return GestureDetector(
-            onTap: () {
-              FocusScope.of(context).unfocus();
-            },
-            child: DreamyBackground(
-              child: Stack(
-                children: [
-                  // Main content
-                  SafeArea(
-                    top: false,
-                    bottom: false,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isLandscape = orientation == Orientation.landscape;
-                        
-                        // Available height = total - header - footer - margins
-                        final availableHeight = constraints.maxHeight - _headerHeight - footerHeight;
-                        // Card area: top margin (dynamicGap) + card + bottom margin (dynamicGap)
-                        final cardMaxHeight = availableHeight - dynamicGap - dynamicGap;
-                        // Use compact mode when space is tight (based on text scale factor)
-                        final textScale = MediaQuery.of(context).textScaler.scale(1.0);
-                        final useCompact = textScale > 1.2 || cardMaxHeight < 550;
-                        final useExtraCompact = textScale > 1.5 || cardMaxHeight < 450;
-                        
-                        // Orientation-aware padding and constraints
-                        final horizontalPadding = 24.0;
-                        final cardMaxWidth = double.infinity;
-                    
-                    if (isLandscape) {
-                      // Landscape single card layout
-                      // Detect iPad (tablet) for landscape mode
-                      final screenWidth = MediaQuery.of(context).size.width;
-                      final isTablet = screenWidth > 600;
-                      print('DEBUG: Landscape mode - screenWidth: $screenWidth, isTablet: $isTablet');
-                      // Make bottom gap same as top gap (dynamicGap)
-                      final landscapeBottomPadding = dynamicGap;
-                      
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          left: horizontalPadding,
-                          right: horizontalPadding,
-                          top: _headerHeight + dynamicGap,
-                          bottom: landscapeBottomPadding,
-                        ),
-                        child: SizedBox(
-                          height: cardMaxHeight,
-                          child: DreamyCard(
-                              child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                // Left side - Logo
-                                Expanded(
-                                  flex: 1,
-                                  child: Center(
-                                    child: Image.asset(
-                                      'assets/images/lunarae_logo_1024x1024.png',
-                                      fit: BoxFit.contain,
-                                      height: constraints.maxHeight * 0.4,
-                                    ),
-                                  ),
-                                ),
-                                
-                                const SizedBox(width: 32),
-                                
-                                // Right side - Form content
-                                Expanded(
-                                  flex: 1,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+      // Record successful story generation
+      await subscriptionService.recordStoryGenerated();
+            
+            if (!mounted) return;
+            
+            // Create a summary title from the prompt
+            final summaryTitle = _createStoryTitle(promptController.text.trim());
+            
+            // Log analytics event for story generation
+            await FirebaseAnalyticsService().logEvent(
+              name: 'story_generated',
+              parameters: {
+                'prompt_length': promptController.text.trim().length,
+                'story_length': story.length,
+                'timestamp': DateTime.now().toIso8601String(),
+              },
+            );
+            
+            Navigator.push(
+              context,
+              DreamyPageRoute(
+                page: StoryViewScreen(
+                  content: story,
+                  storyTitle: summaryTitle,
+                ),
+              ),
+            );
+          } catch (e) {
+            if (!mounted) return;
+            final message = e.toString().contains('OPENAI_API_KEY')
+                ? (kReleaseMode
+                    ? 'App build is missing the OpenAI API key. Please contact support.'
+                    : 'Missing OPENAI_API_KEY. Run/build with --dart-define=OPENAI_API_KEY=...')
+                : 'Unable to create story. Please try again.';
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(message),
+                backgroundColor: LunaTheme.primary(context),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          } finally {
+            if (mounted) {
+              setState(() => _isLoading = false);
+            }
+          }
+        }
+
+        @override
+        Widget build(BuildContext context) {
+          final fontSizeProvider = context.watch<FontSizeProvider>();
+          final scaledBodyStyle = LunaTheme.body(context).copyWith(
+            fontSize: 16 * fontSizeProvider.scaleFactor,
+          );
+          final scaledHintStyle = LunaTheme.hintText(context).copyWith(
+            fontSize: 16 * fontSizeProvider.scaleFactor,
+          );
+          final footerHeight = BannerAdWithFooter.calculateFooterHeight(context);
+          
+          // Fixed gap between header and card
+          const dynamicGap = 24.0;
+          
+          // Schedule header measurement after layout
+          WidgetsBinding.instance.addPostFrameCallback((_) => _measureHeader());
+          
+          return Scaffold(
+            extendBody: true,
+            extendBodyBehindAppBar: true,
+            bottomNavigationBar: BannerAdWithFooter(footerLinks: const _FooterLinks()),
+            floatingActionButton: null,
+            body: OrientationBuilder(
+              builder: (context, orientation) {
+                return GestureDetector(
+                  onTap: () {
+                    FocusScope.of(context).unfocus();
+                  },
+                  child: DreamyBackground(
+                    child: Stack(
+                      children: [
+                        // Main content
+                        SafeArea(
+                          top: false,
+                          bottom: false,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isLandscape = orientation == Orientation.landscape;
+                              
+                              // Available height = total - header - footer - margins
+                              final availableHeight = constraints.maxHeight - _headerHeight - footerHeight;
+                              // Card area: top margin (dynamicGap) + card + bottom margin (dynamicGap)
+                              final cardMaxHeight = availableHeight - dynamicGap - dynamicGap;
+                              // Use compact mode when space is tight (based on text scale factor)
+                              final textScale = MediaQuery.of(context).textScaler.scale(1.0);
+                              final useCompact = textScale > 1.2 || cardMaxHeight < 550;
+                              final useExtraCompact = textScale > 1.5 || cardMaxHeight < 450;
+                              
+                              // Orientation-aware padding and constraints
+                              final horizontalPadding = 24.0;
+                              final cardMaxWidth = double.infinity;
+                          
+                          if (isLandscape) {
+                            // Landscape single card layout
+                            // Detect iPad (tablet) for landscape mode
+                            final screenWidth = MediaQuery.of(context).size.width;
+                            final isTablet = screenWidth > 600;
+                            print('DEBUG: Landscape mode - screenWidth: $screenWidth, isTablet: $isTablet');
+                            // Make bottom gap same as top gap (dynamicGap)
+                            final landscapeBottomPadding = dynamicGap;
+                            
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                left: horizontalPadding,
+                                right: horizontalPadding,
+                                top: _headerHeight + dynamicGap,
+                                bottom: landscapeBottomPadding,
+                              ),
+                              child: SizedBox(
+                                height: cardMaxHeight,
+                                child: DreamyCard(
+                                    child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      // Prompt helper title - hidden in extra compact
-                                      if (!useExtraCompact)
-                                        Text(
-                                          'Create me magical story about:',
-                                          style: scaledBodyStyle.copyWith(
-                                            fontSize: 15 * fontSizeProvider.scaleFactor,
-                                            fontStyle: FontStyle.italic,
+                                      // Left side - Logo
+                                      Expanded(
+                                        flex: 1,
+                                        child: Center(
+                                          child: Image.asset(
+                                            'assets/images/lunarae_logo_1024x1024.png',
+                                            fit: BoxFit.contain,
+                                            height: constraints.maxHeight * 0.4,
                                           ),
-                                          textAlign: TextAlign.center,
                                         ),
-                                      
-                                      if (!useExtraCompact)
-                                        const SizedBox(height: 16),
-                                      
-                                      // Prompt Input - pill-shaped, fewer lines when compact, bigger on iPad
-                                      _ScaledDreamyInput(
-                                        controller: promptController,
-                                        hintText: "A sleepy unicorn who can't find her stars…",
-                                        hintStyle: isTablet ? scaledHintStyle.copyWith(fontSize: 20 * fontSizeProvider.scaleFactor) : scaledHintStyle,
-                                        inputStyle: isTablet ? scaledBodyStyle.copyWith(fontSize: 20 * fontSizeProvider.scaleFactor) : scaledBodyStyle,
-                                        onSubmitted: _isLoading ? null : _generateStory,
-                                        maxLines: isTablet ? 6 : (useExtraCompact ? 1 : (useCompact ? 2 : 3)),
                                       ),
                                       
-                                      SizedBox(height: useExtraCompact ? 8 : 16),
+                                      const SizedBox(width: 32),
                                       
-                                      // Primary Button
-                                      _ScaledDreamyPrimaryButton(
-                                        text: "Create My Bedtime Story",
-                                        textStyle: LunaTheme.buttonText(context).copyWith(
-                                          fontSize: 17 * fontSizeProvider.scaleFactor,
+                                      // Right side - Form content
+                                      Expanded(
+                                        flex: 1,
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            // Prompt helper title - hidden in extra compact
+                                            if (!useExtraCompact)
+                                              Text(
+                                                'Create my magical story about:',
+                                                style: scaledBodyStyle.copyWith(
+                                                  fontSize: 15 * fontSizeProvider.scaleFactor,
+                                                  fontStyle: FontStyle.italic,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            
+                                            if (!useExtraCompact)
+                                              const SizedBox(height: 16),
+                                            
+                                            // Prompt Input - pill-shaped, fewer lines when compact, bigger on iPad
+                                            _ScaledDreamyInput(
+                                              controller: promptController,
+                                              hintText: "A sleepy unicorn who can't find her stars…",
+                                              hintStyle: isTablet ? scaledHintStyle.copyWith(fontSize: 20 * fontSizeProvider.scaleFactor) : scaledHintStyle,
+                                              inputStyle: isTablet ? scaledBodyStyle.copyWith(fontSize: 20 * fontSizeProvider.scaleFactor) : scaledBodyStyle,
+                                              onSubmitted: _isLoading ? null : _generateStory,
+                                              maxLines: isTablet ? 6 : (useExtraCompact ? 1 : (useCompact ? 2 : 3)),
+                                            ),
+                                            
+                                            SizedBox(height: useExtraCompact ? 8 : 16),
+                                            
+                                            // Primary Button
+                                            _ScaledDreamyPrimaryButton(
+                                              text: "Create My Bedtime Story",
+                                              textStyle: LunaTheme.buttonText(context).copyWith(
+                                                fontSize: 17 * fontSizeProvider.scaleFactor,
+                                              ),
+                                              onPressed: _isLoading ? null : _generateStory,
+                                              isLoading: _isLoading,
+                                              compact: useCompact || useExtraCompact,
+                                            ),
+                                          ],
                                         ),
-                                        onPressed: _isLoading ? null : _generateStory,
-                                        isLoading: _isLoading,
-                                        compact: useCompact || useExtraCompact,
                                       ),
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    } else {
-                      // Portrait layout (original)
-                      // Calculate content area height (between header and footer)
-                      final contentAreaHeight = constraints.maxHeight - _headerHeight - footerHeight;
-                      
-                      // Calculate equal gap for top and bottom
-                      final equalGap = dynamicGap * 1.2;
-                      
-                      // Detect platform and tablet size to match iPad layout on Android tablets
-                      final screenWidth = MediaQuery.of(context).size.width;
-                      final isTablet = screenWidth > 600;
-                      final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
-                      final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-                      
-                      // Android tablets should use same layout as iPad tablets
-                      // Phones keep their current layout
-                      final useIPadLayout = isTablet; // All tablets use iPad-style layout
-                      
-                      // Responsive horizontal padding for iPad-style layout
-                      final responsiveHorizontalPadding = useIPadLayout ? screenWidth * 0.03 : horizontalPadding;
-                      
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          left: responsiveHorizontalPadding,
-                          right: responsiveHorizontalPadding,
-                          top: _headerHeight + equalGap,
-                          bottom: footerHeight + equalGap,
-                        ),
-                        child: DreamyCard(
-                          child: Column(
-                            children: [
-                              // Logo - smaller on iPad-style layout, larger on phone
-                              Flexible(
-                                flex: useIPadLayout ? 2 : 3,
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: useIPadLayout ? 8 : 0,
-                                  ),
-                                  child: Image.asset(
-                                    'assets/images/lunarae_logo_1024x1024.png',
-                                    fit: BoxFit.contain,
-                                  ),
+                              ),
+                            );
+                          } else {
+                            // Portrait layout (original)
+                            // Calculate content area height (between header and footer)
+                            final contentAreaHeight = constraints.maxHeight - _headerHeight - footerHeight;
+                            
+                            // Calculate equal gap for top and bottom
+                            final equalGap = dynamicGap * 1.2;
+                            
+                            // Detect platform and tablet size to match iPad layout on Android tablets
+                            final screenWidth = MediaQuery.of(context).size.width;
+                            final isTablet = screenWidth > 600;
+                            final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+                            final isAndroid = Theme.of(context).platform == TargetPlatform.android;
+                            
+                            // Android tablets should use same layout as iPad tablets
+                            // Phones keep their current layout
+                            final useIPadLayout = isTablet; // All tablets use iPad-style layout
+                            
+                            // Responsive horizontal padding for iPad-style layout
+                            final responsiveHorizontalPadding = useIPadLayout ? screenWidth * 0.03 : horizontalPadding;
+                            
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                left: responsiveHorizontalPadding,
+                                right: responsiveHorizontalPadding,
+                                top: _headerHeight + equalGap,
+                                bottom: footerHeight + equalGap,
+                              ),
+                              child: DreamyCard(
+                                child: Column(
+                                  children: [
+                                    // Logo - smaller on iPad-style layout, larger on phone
+                                    Flexible(
+                                      flex: useIPadLayout ? 2 : 3,
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: useIPadLayout ? 8 : 0,
+                                        ),
+                                        child: Image.asset(
+                                          'assets/images/lunarae_logo_1024x1024.png',
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                    ),
+                                    
+                                    SizedBox(height: useIPadLayout ? 16 : (useExtraCompact ? 4 : 8)),
+                                    
+                                    // Prompt helper title - hidden in extra compact
+                                    if (!useExtraCompact)
+                                      Text(
+                                        'Create my magical story about:',
+                                        style: scaledBodyStyle.copyWith(
+                                          fontSize: 15 * fontSizeProvider.scaleFactor,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    
+                                    if (!useExtraCompact)
+                                      SizedBox(height: useIPadLayout ? 16 : 8),
+                                    
+                                    // Prompt Input - larger on iPad-style layout
+                                    Flexible(
+                                      flex: useIPadLayout ? 2 : 0,
+                                      fit: useIPadLayout ? FlexFit.tight : FlexFit.loose,
+                                      child: _ScaledDreamyInput(
+                                        controller: promptController,
+                                        hintText: "A sleepy unicorn who can't find her stars…",
+                                        hintStyle: scaledHintStyle,
+                                        inputStyle: scaledBodyStyle,
+                                        onSubmitted: _isLoading ? null : _generateStory,
+                                        maxLines: useIPadLayout ? 5 : (useExtraCompact ? 1 : (useCompact ? 2 : 3)),
+                                        expandVertically: useIPadLayout,
+                                      ),
+                                    ),
+                                    
+                                    SizedBox(height: useIPadLayout ? 20 : (useExtraCompact ? 4 : 8)),
+                                    
+                                    // Primary Button
+                                    _ScaledDreamyPrimaryButton(
+                                      text: "Create My Bedtime Story",
+                                      textStyle: LunaTheme.buttonText(context).copyWith(
+                                        fontSize: 17 * fontSizeProvider.scaleFactor,
+                                      ),
+                                      onPressed: _isLoading ? null : _generateStory,
+                                      isLoading: _isLoading,
+                                      compact: useCompact || useExtraCompact,
+                                    ),
+                                    
+                                    SizedBox(height: useIPadLayout ? 12 : (useExtraCompact ? 2 : 4)),
+                                  ],
                                 ),
                               ),
-                              
-                              SizedBox(height: useIPadLayout ? 16 : (useExtraCompact ? 4 : 8)),
-                              
-                              // Prompt helper title - hidden in extra compact
-                              if (!useExtraCompact)
-                                Text(
-                                  'Create me magical story about:',
-                                  style: scaledBodyStyle.copyWith(
-                                    fontSize: 15 * fontSizeProvider.scaleFactor,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              
-                              if (!useExtraCompact)
-                                SizedBox(height: useIPadLayout ? 16 : 8),
-                              
-                              // Prompt Input - larger on iPad-style layout
-                              Flexible(
-                                flex: useIPadLayout ? 2 : 0,
-                                fit: useIPadLayout ? FlexFit.tight : FlexFit.loose,
-                                child: _ScaledDreamyInput(
-                                  controller: promptController,
-                                  hintText: "A sleepy unicorn who can't find her stars…",
-                                  hintStyle: scaledHintStyle,
-                                  inputStyle: scaledBodyStyle,
-                                  onSubmitted: _isLoading ? null : _generateStory,
-                                  maxLines: useIPadLayout ? 5 : (useExtraCompact ? 1 : (useCompact ? 2 : 3)),
-                                  expandVertically: useIPadLayout,
-                                ),
-                              ),
-                              
-                              SizedBox(height: useIPadLayout ? 20 : (useExtraCompact ? 4 : 8)),
-                              
-                              // Primary Button
-                              _ScaledDreamyPrimaryButton(
-                                text: "Create My Bedtime Story",
-                                textStyle: LunaTheme.buttonText(context).copyWith(
-                                  fontSize: 17 * fontSizeProvider.scaleFactor,
-                                ),
-                                onPressed: _isLoading ? null : _generateStory,
-                                isLoading: _isLoading,
-                                compact: useCompact || useExtraCompact,
-                              ),
-                              
-                              SizedBox(height: useIPadLayout ? 12 : (useExtraCompact ? 2 : 4)),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                  },
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    // Frosted header overlay
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: FrostedHeader(
+                        key: _headerKey,
+                        showBranding: false,
+                        trailing: const _HeaderTrailing(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              // Frosted header overlay
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: FrostedHeader(
-                  key: _headerKey,
-                  showBranding: false,
-                  trailing: _FontSizeButton(),
-                ),
-              ),
-            ],
+              );
+            },
           ),
-        ),
-        );
-      },
-    ),
-    );
-  }
+          );
+        }
 
-}
+      }
 
 /// Nearly invisible footer links for legal pages
 class _FooterLinks extends StatelessWidget {
@@ -469,7 +551,7 @@ class _FooterLinks extends StatelessWidget {
   }
 }
 
-/// Tappable link with underline on tap only
+/// Tappable footer link
 class _FooterLink extends StatefulWidget {
   final String text;
   final Color color;
@@ -488,24 +570,104 @@ class _FooterLink extends StatefulWidget {
 }
 
 class _FooterLinkState extends State<_FooterLink> {
-  bool _isTapped = false;
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isTapped = true),
-      onTapUp: (_) => setState(() => _isTapped = false),
-      onTapCancel: () => setState(() => _isTapped = false),
-      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
       child: Text(
         widget.text,
         style: widget.style.copyWith(
           color: widget.color,
-          decoration: _isTapped ? TextDecoration.underline : TextDecoration.none,
-          decorationColor: widget.color,
+          decoration: _pressed
+              ? TextDecoration.underline
+              : TextDecoration.none,
         ),
       ),
     );
+  }
+}
+
+
+/// Premium button for the header
+class _PremiumButton extends StatelessWidget {
+  const _PremiumButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final subscriptionService = context.watch<SubscriptionService>();
+    
+    // Hide premium button on Android
+    if (!subscriptionService.isSubscriptionsAvailable) {
+      return const SizedBox.shrink();
+    }
+    
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+        );
+      },
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: subscriptionService.isSubscribed
+              ? Colors.green.withValues(alpha: 0.15)
+              : LunaTheme.primary(context).withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: subscriptionService.isSubscribed
+                ? Colors.green.withValues(alpha: 0.3)
+                : LunaTheme.primary(context).withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            'S',
+            style: TextStyle(
+              color: subscriptionService.isSubscribed
+                  ? Colors.green
+                  : LunaTheme.primary(context),
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Header trailing widget with platform-specific subscription button
+class _HeaderTrailing extends StatelessWidget {
+  const _HeaderTrailing();
+
+  @override
+  Widget build(BuildContext context) {
+    final subscriptionService = context.watch<SubscriptionService>();
+    
+    // Only show premium button on iOS
+    if (subscriptionService.isSubscriptionsAvailable) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const _PremiumButton(),
+          const SizedBox(width: 8),
+          const _FontSizeButton(),
+        ],
+      );
+    }
+    // On Android, only show font size button
+    return const _FontSizeButton();
   }
 }
 

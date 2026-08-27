@@ -241,41 +241,6 @@ class FirebaseAnalyticsService {
     }
   }
 
-  /// Log subscription started event
-  Future<void> logSubscriptionStarted(String tier, String duration) async {
-    final parameters = {
-      'tier': tier,
-      'duration': duration,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-    
-    if (_ensureInitialized()) {
-      await _analytics!.logEvent(
-        name: 'subscription_started',
-        parameters: parameters.cast<String, Object>(),
-      );
-    } else {
-      _queueEvent('subscription_started', parameters);
-    }
-  }
-
-  /// Log subscription renewed event
-  Future<void> logSubscriptionRenewed(String tier) async {
-    final parameters = {
-      'tier': tier,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-    
-    if (_ensureInitialized()) {
-      await _analytics!.logEvent(
-        name: 'subscription_renewed',
-        parameters: parameters.cast<String, Object>(),
-      );
-    } else {
-      _queueEvent('subscription_renewed', parameters);
-    }
-  }
-
   /// Log screen view event
   Future<void> logScreenView(String screenName) async {
     if (_ensureInitialized()) {
@@ -344,15 +309,6 @@ class FirebaseAnalyticsService {
     } catch (e) {
       // This should never be reached as crash() terminates the app
       rethrow;
-    }
-  }
-
-  /// Update subscription tier in Crashlytics
-  Future<void> updateSubscriptionTier(String tier) async {
-    try {
-      await FirebaseCrashlytics.instance.setCustomKey('subscription_tier', tier);
-    } catch (e) {
-      // Silently fail if Crashlytics is not initialized
     }
   }
 

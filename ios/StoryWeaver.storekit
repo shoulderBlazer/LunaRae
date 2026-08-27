@@ -1,0 +1,88 @@
+{
+  "identifier" : "B9B3D4A3",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "1",
+      "localizations" : [
+        {
+          "description" : "Unlock unlimited magical stories with Story Weaver Premium. Billed monthly, cancel anytime.",
+          "displayName" : "Story Weaver Premium (Monthly)",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.lunarae.mobile.storyweaver.monthly",
+      "referenceName" : "Story Weaver Premium Monthly",
+      "type" : "RecurringSubscription"
+    },
+    {
+      "displayPrice" : "49.99",
+      "familyShareable" : false,
+      "internalID" : "2",
+      "localizations" : [
+        {
+          "description" : "Unlock unlimited magical stories with Story Weaver Premium. Best value - save 20% compared to monthly. Billed yearly, cancel anytime.",
+          "displayName" : "Story Weaver Premium (Yearly)",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.lunarae.mobile.storyweaver.yearly",
+      "referenceName" : "Story Weaver Premium Yearly",
+      "type" : "RecurringSubscription"
+    }
+  ],
+  "settings" : "_settings",
+  "subscriptions" : [
+    {
+      "adHocOffers" : [
+
+      ],
+      "code" : "monthly",
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "groupNumber" : 1,
+      "internalID" : "1",
+      "introductoryOffer" : null,
+      "localizations" : [
+        {
+          "description" : "Unlock unlimited magical stories with Story Weaver Premium. Billed monthly, cancel anytime.",
+          "displayName" : "Story Weaver Premium (Monthly)",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.lunarae.mobile.storyweaver.monthly",
+      "recurringSubscriptionPeriod" : "P1M",
+      "referenceName" : "Story Weaver Premium Monthly",
+      "subscriptionGroupID" : "21548375",
+      "type" : "RecurringSubscription"
+    },
+    {
+      "adHocOffers" : [
+
+      ],
+      "code" : "yearly",
+      "displayPrice" : "49.99",
+      "familyShareable" : false,
+      "groupNumber" : 1,
+      "internalID" : "2",
+      "introductoryOffer" : null,
+      "localizations" : [
+        {
+          "description" : "Unlock unlimited magical stories with Story Weaver Premium. Best value - save 20% compared to monthly. Billed yearly, cancel anytime.",
+          "displayName" : "Story Weaver Premium (Yearly)",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.lunarae.mobile.storyweaver.yearly",
+      "recurringSubscriptionPeriod" : "P1Y",
+      "referenceName" : "Story Weaver Premium Yearly",
+      "subscriptionGroupID" : "21548375",
+      "type" : "RecurringSubscription"
+    }
+  ],
+  "version" : 5
+}

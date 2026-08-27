@@ -13,6 +13,7 @@ import 'services/ads_ready_service.dart';
 import 'services/consent_service.dart';
 import 'services/font_size_provider.dart';
 import 'services/firebase_analytics_service.dart';
+import 'services/subscription_service.dart';
 import 'firebase_options.dart';
 
 import 'dart:async';
@@ -25,7 +26,7 @@ void main() async {
     DeviceOrientation.portraitUp,
   ]);
 
-  // Start app immediately (CRITICAL FIX for Play Store rejection)
+  // Start app immediately
   runApp(const LunaRaeApp());
 
   // Initialize non-critical services in background
@@ -37,7 +38,7 @@ void _initializeServices() {
   // Prevent any async errors from crashing the app
   Future(() async {
     try {
-      // Initialize Firebase
+      // Initialize Firebase in background
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
@@ -70,8 +71,7 @@ void _initializeServices() {
 
       // Set custom Crashlytics keys
       await FirebaseCrashlytics.instance.setCustomKey('app_version', '1.0.8');
-      await FirebaseCrashlytics.instance.setCustomKey('build_number', '31');
-      await FirebaseCrashlytics.instance.setCustomKey('subscription_tier', 'free');
+      await FirebaseCrashlytics.instance.setCustomKey('build_number', '34');
       await FirebaseCrashlytics.instance.setCustomKey('current_screen', 'story_generator');
 
       // Initialize UMP consent and AdService in background
@@ -91,6 +91,14 @@ void _initializeServices() {
 
       // Mark ads as ready so banner widgets can be created
       AdsReadyService.markReady();
+
+      // Initialize subscription service
+      await SubscriptionService().initialize().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('SubscriptionService init timed out (continuing safely)');
+        },
+      );
     } catch (e) {
       debugPrint('Service init failed: $e');
     }
@@ -102,8 +110,11 @@ class LunaRaeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => FontSizeProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FontSizeProvider()),
+        ChangeNotifierProvider.value(value: SubscriptionService()),
+      ],
       child: MaterialApp(
         title: 'LunaRae',
         theme: LunaTheme.lightTheme(),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../services/ad_service.dart';
 import '../services/ads_ready_service.dart';
+import '../services/subscription_service.dart';
 import '../theme/theme.dart';
 
 /// Dreamy styled banner ad widget with rounded container and "Advertisement" label
@@ -23,6 +24,8 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
     super.initState();
     // Listen for ads ready signal
     AdsReadyService.addListener(_onAdsReady);
+    // Listen for subscription changes
+    SubscriptionService().addListener(_onSubscriptionChanged);
     
     // Load ad immediately if ads are already ready
     if (AdsReadyService.isReady) {
@@ -36,7 +39,19 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   void dispose() {
     _bannerAd?.dispose();
     AdsReadyService.removeListener(_onAdsReady);
+    SubscriptionService().removeListener(_onSubscriptionChanged);
     super.dispose();
+  }
+
+  void _onSubscriptionChanged() {
+    debugPrint('[BannerAdWidget] Subscription status changed');
+    if (mounted) {
+      // Reload ad to reflect new subscription status
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      _isAdLoaded = false;
+      _loadAd();
+    }
   }
 
   void _onAdsReady() {
@@ -48,6 +63,13 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   Future<void> _loadAd() async {
     debugPrint('[BannerAdWidget] _loadAd called');
+    
+    // Check if user has premium subscription - don't load ads for subscribers
+    // Only check subscription status on iOS since subscriptions are disabled on Android
+    if (SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed) {
+      debugPrint('[BannerAdWidget] User is subscribed - skipping banner ad load');
+      return;
+    }
     
     // Guard against multiple banner loads
     if (_isLoadingAd || _bannerAd != null) {
@@ -87,6 +109,11 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   @override
   Widget build(BuildContext context) {
     debugPrint('[BannerAdWidget] build() called - _isAdLoaded: $_isAdLoaded, _bannerAd: ${_bannerAd != null}');
+    
+    // Don't show ads if subscriptions are available and user is subscribed
+    if (SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed) {
+      return const SizedBox.shrink();
+    }
     
     if (!_isAdLoaded || _bannerAd == null) {
       debugPrint('[BannerAdWidget] Returning SizedBox.shrink() (ad not loaded)');
@@ -148,8 +175,12 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
     // Footer link text base height (fontSize 10 + padding)
     final footerLinksHeight = textScaler.scale(10) + 12; // 6px vertical padding * 2
     
+    // Check if user is subscribed to determine if we need banner height
+    // Only check subscription status on iOS since subscriptions are disabled on Android
+    final isSubscribed = SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed;
+    
     // Fixed components
-    const bannerHeight = _reservedAdHeight;
+    final bannerHeight = isSubscribed ? 0.0 : _reservedAdHeight;
     const bottomPadding = 8.0; // minimum SafeArea bottom
     
     // SafeArea bottom inset
@@ -163,6 +194,8 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
     super.initState();
     // Listen for ads ready signal
     AdsReadyService.addListener(_onAdsReady);
+    // Listen for subscription changes
+    SubscriptionService().addListener(_onSubscriptionChanged);
     
     // Load ad immediately if ads are already ready
     if (AdsReadyService.isReady) {
@@ -176,7 +209,19 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
   void dispose() {
     _bannerAd?.dispose();
     AdsReadyService.removeListener(_onAdsReady);
+    SubscriptionService().removeListener(_onSubscriptionChanged);
     super.dispose();
+  }
+
+  void _onSubscriptionChanged() {
+    debugPrint('[BannerAdWithFooter] Subscription status changed');
+    if (mounted) {
+      // Reload ad to reflect new subscription status
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      _isAdLoaded = false;
+      _loadAd();
+    }
   }
 
   void _onAdsReady() {
@@ -188,6 +233,13 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
 
   Future<void> _loadAd() async {
     debugPrint('[BannerAdWithFooter] _loadAd called');
+    
+    // Check if user has premium subscription - don't load ads for subscribers
+    // Only check subscription status on iOS since subscriptions are disabled on Android
+    if (SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed) {
+      debugPrint('[BannerAdWithFooter] User is subscribed - skipping banner ad load');
+      return;
+    }
     
     // Guard against multiple banner loads
     if (_isLoadingAd || _bannerAd != null) {
@@ -229,6 +281,27 @@ class _BannerAdWithFooterState extends State<BannerAdWithFooter> {
   @override
   Widget build(BuildContext context) {
     final isDark = LunaTheme.isDarkMode(context);
+    final isSubscribed = SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed;
+
+    // If user is subscribed, only show footer links without banner ad
+    if (isSubscribed) {
+      return ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+          child: Container(
+            color: (isDark ? LunaTheme.darkGradientStart : LunaTheme.lightPrimary).withValues(alpha: 0.9),
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: widget.footerLinks,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return ClipRect(
       child: BackdropFilter(
@@ -281,6 +354,8 @@ class _InlineBannerAdWidgetState extends State<InlineBannerAdWidget> {
     super.initState();
     // Listen for ads ready signal
     AdsReadyService.addListener(_onAdsReady);
+    // Listen for subscription changes
+    SubscriptionService().addListener(_onSubscriptionChanged);
     
     // Load ad immediately if ads are already ready
     if (AdsReadyService.isReady) {
@@ -294,7 +369,19 @@ class _InlineBannerAdWidgetState extends State<InlineBannerAdWidget> {
   void dispose() {
     _bannerAd?.dispose();
     AdsReadyService.removeListener(_onAdsReady);
+    SubscriptionService().removeListener(_onSubscriptionChanged);
     super.dispose();
+  }
+
+  void _onSubscriptionChanged() {
+    debugPrint('[InlineBannerAdWidget] Subscription status changed');
+    if (mounted) {
+      // Reload ad to reflect new subscription status
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      _isAdLoaded = false;
+      _loadAd();
+    }
   }
 
   void _onAdsReady() {
@@ -306,6 +393,13 @@ class _InlineBannerAdWidgetState extends State<InlineBannerAdWidget> {
 
   Future<void> _loadAd() async {
     debugPrint('[InlineBannerAdWidget] _loadAd called');
+    
+    // Check if user has premium subscription - don't load ads for subscribers
+    // Only check subscription status on iOS since subscriptions are disabled on Android
+    if (SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed) {
+      debugPrint('[InlineBannerAdWidget] User is subscribed - skipping banner ad load');
+      return;
+    }
     
     // Guard against multiple banner loads
     if (_isLoadingAd || _bannerAd != null) {
@@ -345,6 +439,12 @@ class _InlineBannerAdWidgetState extends State<InlineBannerAdWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if user is subscribed - return empty space if so
+    // Only check subscription status on iOS since subscriptions are disabled on Android
+    if (SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed) {
+      return const SizedBox.shrink();
+    }
+    
     if (!_isAdLoaded || _bannerAd == null) {
       return const SizedBox(height: 90);
     }
@@ -426,9 +526,13 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
     // Footer link text base height (fontSize 10 + padding)
     final footerLinksHeight = isTablet ? 10 + 12 : textScaler.scale(10) + 12; // Use fixed height for tablets
     
+    // Check if user is subscribed to determine if we need banner height
+    // Only check subscription status on iOS since subscriptions are disabled on Android
+    final isSubscribed = SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed;
+    
     // Fixed components
     const separatorHeight = 5.0; // 1px line + 4px spacing
-    const bannerHeight = _reservedAdHeight;
+    final bannerHeight = isSubscribed ? 0.0 : _reservedAdHeight;
     const bottomPadding = 8.0; // minimum SafeArea bottom
     
     // SafeArea bottom inset - use fixed value for tablets to ensure consistency
@@ -453,6 +557,8 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
     
     // Listen for ads ready signal
     AdsReadyService.addListener(_onAdsReady);
+    // Listen for subscription changes
+    SubscriptionService().addListener(_onSubscriptionChanged);
     
     // Load ad immediately if ads are already ready
     if (AdsReadyService.isReady) {
@@ -467,7 +573,19 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
     _fadeController.dispose();
     _bannerAd?.dispose();
     AdsReadyService.removeListener(_onAdsReady);
+    SubscriptionService().removeListener(_onSubscriptionChanged);
     super.dispose();
+  }
+
+  void _onSubscriptionChanged() {
+    debugPrint('[StoryOutputBannerAd] Subscription status changed');
+    if (mounted) {
+      // Reload ad to reflect new subscription status
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      _isAdLoaded = false;
+      _loadAd();
+    }
   }
 
   void _onAdsReady() {
@@ -479,6 +597,13 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
 
   Future<void> _loadAd() async {
     debugPrint('[StoryOutputBannerAd] _loadAd called');
+    
+    // Check if user has premium subscription - don't load ads for subscribers
+    // Only check subscription status on iOS since subscriptions are disabled on Android
+    if (SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed) {
+      debugPrint('[StoryOutputBannerAd] User is subscribed - skipping banner ad load');
+      return;
+    }
     
     // Guard against multiple banner loads
     if (_isLoadingAd || _bannerAd != null) {
@@ -522,6 +647,7 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
   Widget build(BuildContext context) {
     debugPrint('[StoryOutputBannerAd] build() called - _isAdLoaded: $_isAdLoaded, _bannerAd: ${_bannerAd != null}, mounted: $mounted');
     final isDark = LunaTheme.isDarkMode(context);
+    final isSubscribed = SubscriptionService().isSubscriptionsAvailable && SubscriptionService().isSubscribed;
 
     return ClipRect(
       child: BackdropFilter(
@@ -553,29 +679,30 @@ class _StoryOutputBannerAdState extends State<StoryOutputBannerAd>
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: widget.footerLinks,
                 ),
-                // Banner ad with fade-in animation and fixed reserved height
-                SizedBox(
-                  width: double.infinity,
-                  height: _reservedAdHeight,
-                  child: _isAdLoaded && _bannerAd != null
-                      ? FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: Center(
-                            child: Builder(
-                              builder: (context) {
-                                debugPrint('[StoryOutputBannerAd] Building AdWidget with BannerAd');
-                                return AdWidget(ad: _bannerAd!);
-                              },
+                // Banner ad with fade-in animation and fixed reserved height - only show if not subscribed
+                if (!isSubscribed)
+                  SizedBox(
+                    width: double.infinity,
+                    height: _reservedAdHeight,
+                    child: _isAdLoaded && _bannerAd != null
+                        ? FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: Center(
+                              child: Builder(
+                                builder: (context) {
+                                  debugPrint('[StoryOutputBannerAd] Building AdWidget with BannerAd');
+                                  return AdWidget(ad: _bannerAd!);
+                                },
+                              ),
                             ),
+                          )
+                        : Builder(
+                            builder: (context) {
+                              debugPrint('[StoryOutputBannerAd] Returning SizedBox.shrink() - _isAdLoaded: $_isAdLoaded, _bannerAd: ${_bannerAd != null}');
+                              return const SizedBox.shrink(); // Empty placeholder, same height
+                            },
                           ),
-                        )
-                      : Builder(
-                          builder: (context) {
-                            debugPrint('[StoryOutputBannerAd] Returning SizedBox.shrink() - _isAdLoaded: $_isAdLoaded, _bannerAd: ${_bannerAd != null}');
-                            return const SizedBox.shrink(); // Empty placeholder, same height
-                          },
-                        ),
-                ),
+                  ),
               ],
             ),
           ),

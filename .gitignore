@@ -56,3 +56,16 @@ app.*.map.json
 *.jks
 *.keystore
 /android/app/my-release-key.jks
+# Flutter generated files
+ios/.symlinks/
+ios/Flutter/ephemeral/
+
+# Xcode user-specific files
+**/xcuserdata/
+**/*.xcuserstate
+
+# Android generated reports
+android/build/reports/
+
+# Local development files
+devtools_options.yaml

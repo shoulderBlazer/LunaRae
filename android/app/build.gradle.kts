@@ -11,8 +11,8 @@ plugins {
 
 android {
     namespace = "com.lunarae.mobile"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = "28.0.12674087"
+    compileSdk = 36
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -26,35 +26,32 @@ android {
     defaultConfig {
         applicationId = "com.lunarae.mobile"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     signingConfigs {
         create("release") {
-            // Check for Codemagic's default UI variables first
-            val cmKeystorePath = System.getenv("CM_KEYSTORE_PATH")
+            // Prioritize local environment variables for local builds
             val localKeystorePath = System.getenv("KEYSTORE_PATH")
+            val cmKeystorePath = System.getenv("CM_KEYSTORE_PATH")
 
-            if (cmKeystorePath != null && cmKeystorePath.isNotEmpty()) {
-                // Building on Codemagic using UI code signing
-                storeFile = file(cmKeystorePath)
-                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("CM_KEY_ALIAS")
-                keyPassword = System.getenv("CM_KEY_PASSWORD")
-            } else if (localKeystorePath != null && localKeystorePath.isNotEmpty()) {
-                // Fallback for your custom/local environment variables
+            if (localKeystorePath != null && localKeystorePath.isNotEmpty()) {
+                // Local build using environment variables
                 storeFile = file(localKeystorePath)
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
+            } else if (cmKeystorePath != null && cmKeystorePath.isNotEmpty()) {
+                // Fallback for Codemagic CI/CD builds
+                storeFile = file(cmKeystorePath)
+                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("CM_KEY_ALIAS")
+                keyPassword = System.getenv("CM_KEY_PASSWORD")
             } else {
-                // Fallback for building locally without any environment variables
-                storeFile = file("../my-release-key.jks")
-                storePassword = "your_local_password_here"
-                keyAlias = "my-key-alias"
-                keyPassword = "your_local_password_here"
+                // No signing credentials provided - build will fail
+                throw GradleException("No signing credentials provided. Set KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD environment variables for local builds, or CM_* variables for Codemagic.")
             }
         }
     }
