@@ -69,3 +69,6 @@ android/build/reports/
 
 # Local development files
 devtools_options.yaml
+
+# Local signing certificate
+android/upload_certificate.pem
