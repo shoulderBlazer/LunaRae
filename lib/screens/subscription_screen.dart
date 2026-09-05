@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -319,46 +318,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         isLoading: _isRestoring,
                         fontSizeProvider: fontSizeProvider,
                       ),
-
-                      // Debug: Clear subscription button (only in debug mode)
-                      if (kDebugMode) ...[
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () async {
-                            await SubscriptionService()
-                                .debugClearSubscription();
-                            if (mounted) {
-                              _showSuccess(
-                                'Subscription state cleared (debug)',
-                              );
-                            }
-                          },
-                          child: Text(
-                            'DEBUG: Clear Subscription',
-                            style: TextStyle(
-                              color: Colors.red.withValues(alpha: 0.7),
-                              fontSize: 12 * fontSizeProvider.scaleFactor,
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            await SubscriptionService().debugEnableRestore();
-                            if (mounted) {
-                              _showSuccess(
-                                'Subscription restore re-enabled (debug)',
-                              );
-                            }
-                          },
-                          child: Text(
-                            'DEBUG: Re-enable Restore',
-                            style: TextStyle(
-                              color: Colors.green.withValues(alpha: 0.7),
-                              fontSize: 12 * fontSizeProvider.scaleFactor,
-                            ),
-                          ),
-                        ),
-                      ],
 
                       const SizedBox(height: 16),
 

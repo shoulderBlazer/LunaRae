@@ -17,6 +17,15 @@ class AdService {
     // Wait for consent to be ready before initializing ads
     await ConsentService.initialize();
     _isConsentReady = true;
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(
+          tagForChildDirectedTreatment: TagForChildDirectedTreatment.yes,
+          maxAdContentRating: MaxAdContentRating.g,
+        ),
+      );
+    }
     
     await MobileAds.instance.initialize();
     _isInitialized = true;
